@@ -1,0 +1,62 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: ["main", "develop"] # Trigger on pushes to main/develop
+    paths:
+      - "frontend/**" # Only run if frontend code changes
+  pull_request:
+    branches: ["main", "develop"] # Trigger on PRs targeting main/develop
+    paths:
+      - "frontend/**"
+
+jobs:
+  lint-test-build:
+    name: Lint, Test & Build Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend # Set working directory
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20" # Use version matching your project requirement
+          cache: "npm" # Cache npm dependencies
+          cache-dependency-path: frontend/package-lock.json # Specify lock file path
+
+      - name: Install dependencies
+        run: npm ci # Use ci for faster, deterministic installs
+
+      - name: Lint code
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test -- --coverage # Run tests and generate coverage (if configured)
+        # Or use: npm run test:ci if you have a specific CI script
+
+      - name: Build project
+        run: npm run build
+        env:
+          # Provide dummy or build-time env vars if necessary for the build process
+          NEXT_PUBLIC_API_BASE_URL: http://dummy-api.com
+
+    # Optional: Upload test coverage report
+    # - name: Upload coverage reports to Codecov
+    #   uses: codecov/codecov-action@v3
+    #   with:
+    #     token: ${{ secrets.CODECOV_TOKEN }} # Add secret to GitHub repo
+    #     working-directory: ./frontend
+    #     files: ./coverage/lcov.info # Adjust path based on coverage reporter output
+    #     fail_ci_if_error: true
+
+    # Optional: Upload build artifacts
+    # - name: Upload artifact
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name: nextjs-build
+    #     path: ./frontend/.next/
