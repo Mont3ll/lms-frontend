@@ -86,9 +86,16 @@ export const courseSchema = z.object({
     .uuid("Invalid instructor selected")
     .optional()
     .nullable(), // Assuming UUID for user ID
-  status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).default("DRAFT"),
+  status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]),
   tags: z.array(z.string()).optional(), // Assuming tags are strings
-  // Add category, thumbnail etc.
+  category: z.string().optional(),
+  difficulty_level: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+  estimated_duration: z.number().int().min(1).optional(),
+  price: z.number().min(0).optional(),
+  is_free: z.boolean().optional(),
+  learning_objectives: z.array(z.string()).optional(),
+  thumbnail: z.string().optional(),
+  module_outline: z.string().optional(),
 });
 
 // --- Module Schema ---

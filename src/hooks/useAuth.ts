@@ -1,7 +1,6 @@
 // This hook is now part of components/providers/AuthProvider.tsx
 // You can export it from there or keep a separate file exporting from the context:
 
-import { useContext } from "react";
 // Assuming AuthContext is exported from AuthProvider.tsx
 // import { AuthContext } from '@/components/providers/AuthProvider';
 // import { AuthContextType } from '@/components/providers/AuthProvider'; // Import type if needed

@@ -1,5 +1,5 @@
 import React from "react";
-import { useFormContext, FieldError } from "react-hook-form";
+import { useFormContext, Controller, FieldError } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -39,12 +39,11 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   const {
     control,
     formState: { errors },
-  } = useFormContext(); // Use control for Select
+  } = useFormContext();
   const error = errors[name] as FieldError | undefined;
 
-  // Shadcn Select integrates with RHF Controller
-  const { field } = control ? control.register(name) : { field: {} }; // Handle case where control might not be ready?
-  const controllerField = control?.getFieldState(name);
+  // Validate options to ensure no empty values
+  const validatedOptions = options.filter((option) => option.value.trim() !== "");
 
   return (
     <div className={cn("grid gap-2", className)}>
@@ -54,30 +53,37 @@ export const SelectField: React.FC<SelectFieldProps> = ({
       >
         {label}
       </Label>
-      <Select
-        onValueChange={field.onChange} // Use field from Controller
-        defaultValue={field.value}
-        disabled={disabled}
-        name={name} // Pass name for accessibility/form association
-      >
-        <SelectTrigger
-          id={name}
-          className={cn(
-            error && "border-destructive focus:ring-destructive",
-            triggerClassName,
-          )}
-          aria-invalid={!!error}
-        >
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+          <Select
+            onValueChange={field.onChange}
+            defaultValue={field.value}
+            value={field.value}
+            disabled={disabled}
+            name={name}
+          >
+            <SelectTrigger
+              id={name}
+              className={cn(
+                error && "border-destructive focus:ring-destructive",
+                triggerClassName,
+              )}
+              aria-invalid={!!error}
+            >
+              <SelectValue placeholder={placeholder} />
+            </SelectTrigger>
+            <SelectContent>
+              {validatedOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      />
       {error && (
         <p className="text-sm font-medium text-destructive">{error.message}</p>
       )}

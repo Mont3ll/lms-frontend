@@ -6,21 +6,21 @@ import React, { useState, createContext, useContext, ReactNode } from "react";
 
 interface ModalContextType {
   isOpen: (modalId: string) => boolean;
-  openModal: (modalId: string, data?: any) => void;
+  openModal: (modalId: string, data?: unknown) => void;
   closeModal: (modalId: string) => void;
-  modalData: (modalId: string) => any;
+  modalData: (modalId: string) => unknown;
 }
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
 
 interface ModalState {
-  [modalId: string]: { isOpen: boolean; data?: any };
+  [modalId: string]: { isOpen: boolean; data?: unknown };
 }
 
 export function ModalProvider({ children }: { children: ReactNode }) {
   const [modals, setModals] = useState<ModalState>({});
 
-  const openModal = (modalId: string, data: any = null) => {
+  const openModal = (modalId: string, data: unknown = null) => {
     setModals((prev) => ({ ...prev, [modalId]: { isOpen: true, data } }));
   };
 

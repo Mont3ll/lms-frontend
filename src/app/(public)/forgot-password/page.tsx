@@ -51,10 +51,11 @@ export default function ForgotPasswordPage() {
         "If an account exists for this email, a password reset link has been sent.",
       );
       form.reset(); // Clear form on success
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Password reset request failed:", err);
+      const axiosError = err as { response?: { data?: { detail?: string } } };
       setError(
-        err.response?.data?.detail ||
+        axiosError.response?.data?.detail ||
           "Failed to send password reset email. Please try again.",
       );
     } finally {

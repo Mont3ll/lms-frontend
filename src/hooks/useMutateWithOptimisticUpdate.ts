@@ -4,7 +4,7 @@ import {
   UseMutationOptions,
 } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { useToast } from "@/components/ui/use-toast"; // Import toast hook
+import { toast } from "sonner"; // Replace useToast with Sonner
 import { getApiErrorMessage } from "@/lib/api"; // Error handling helper
 
 interface UseOptimisticMutationOptions<TData, TError, TVariables, TContext>
@@ -33,7 +33,6 @@ export function useMutateWithOptimisticUpdate<
   options: UseOptimisticMutationOptions<TData, TError, TVariables, TContext>,
 ) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const {
     queryKeyToInvalidate,
     successMessage,
@@ -65,32 +64,29 @@ export function useMutateWithOptimisticUpdate<
       // Return a context object with the snapshotted value
       return { previousData } as TContext; // Cast context type
     },
-    onError: (error, variables, context) => {
+    onError: (_error, _variables, context) => {
       // Rollback on failure using the context returned from onMutate
-      if (context && (context as any).previousData) {
+      if (context && (context as { previousData?: TData[] }).previousData) {
         queryClient.setQueryData(
           queryKeyToInvalidate,
-          (context as any).previousData,
+          (context as { previousData?: TData[] }).previousData,
         );
       }
-      const errorMsg = getApiErrorMessage(error);
-      toast({
-        title: "Error",
+      const errorMsg = getApiErrorMessage(_error);
+      toast.error("Error", {
         description: `${errorMessage}: ${errorMsg}`,
-        variant: "destructive",
       });
-      console.error("Mutation error:", error);
+      console.error("Mutation error:", _error);
     },
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data) => {
       if (successMessage) {
-        toast({
-          title: "Success",
+        toast.success("Success", {
           description: successMessage,
         });
       }
       console.log("Mutation success:", data);
     },
-    onSettled: (data, error, variables, context) => {
+    onSettled: () => {
       // Always refetch after error or success to ensure data consistency
       queryClient.invalidateQueries({ queryKey: queryKeyToInvalidate });
     },

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CircleUser, Bell, Search, Menu } from "lucide-react"; // Import icons
+import { CircleUser, Bell, Menu } from "lucide-react"; // Import icons
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"; // For mobile nav
 import { useAuth } from "@/components/providers/AuthProvider";
 import { ModeToggle } from "@/components/ui/mode-toggle"; // Assuming you create this based on shadcn docs

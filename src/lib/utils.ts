@@ -18,7 +18,7 @@ export function formatDate(
       month: "short",
       day: "numeric",
     }).format(date);
-  } catch (e) {
+  } catch {
     return "Invalid Date";
   }
 }
@@ -38,7 +38,7 @@ export function formatDateTime(
       minute: "2-digit",
       hour12: true,
     }).format(date);
-  } catch (e) {
+  } catch {
     return "Invalid Date";
   }
 }

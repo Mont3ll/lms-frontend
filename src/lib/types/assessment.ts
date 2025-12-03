@@ -14,10 +14,14 @@ export interface Question {
   question_type_display: string;
   question_text: string;
   points: number;
-  type_specific_data: Record<string, any>; // e.g., { options: QuestionOption[], allow_multiple: boolean } for MC
+  type_specific_data: Record<string, unknown>; // e.g., { options: QuestionOption[], allow_multiple: boolean } for MC
   feedback?: string | null;
   created_at: string;
   updated_at: string;
+  // Frontend-only fields
+  is_required?: boolean;
+  // Frontend-transformed field for MC/TF questions
+  options?: Array<{ id: string; option_text: string; is_correct: boolean }>;
 }
 
 export interface Assessment {
@@ -52,7 +56,7 @@ export interface AssessmentAttempt {
   end_time?: string | null;
   status: "IN_PROGRESS" | "SUBMITTED" | "GRADED";
   status_display: string;
-  answers: Record<string, any>; // { question_id: answer_data }
+  answers: Record<string, unknown>; // { question_id: answer_data }
   score?: number | null; // Use number, backend might send string/Decimal
   max_score?: number | null;
   is_passed?: boolean | null;

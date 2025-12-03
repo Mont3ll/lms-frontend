@@ -2,7 +2,7 @@
 
 import React, { useState, ReactNode, Children, isValidElement } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 // import { Progress } from '@/components/ui/progress'; // Optional progress bar
 
 interface MultiStepFormWrapperProps {
@@ -41,15 +41,6 @@ export const MultiStepFormWrapper: React.FC<MultiStepFormWrapperProps> = ({
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent default if wrapper has form tag
-    if (isLastStep) {
-      onFinalSubmit();
-    } else {
-      nextStep();
-    }
-  };
-
   const CurrentStepComponent = steps[currentStepIndex];
   // Optional progress calculation
   // const progress = ((currentStepIndex + 1) / steps.length) * 100;
@@ -71,6 +62,7 @@ export const MultiStepFormWrapper: React.FC<MultiStepFormWrapperProps> = ({
           variant="outline"
           onClick={prevStep}
           disabled={isFirstStep || isSubmitting}
+          className="cursor-pointer"
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Previous
         </Button>
@@ -79,6 +71,7 @@ export const MultiStepFormWrapper: React.FC<MultiStepFormWrapperProps> = ({
           type="button" // Use type="submit" if this button should submit the active step's form part
           onClick={isLastStep ? onFinalSubmit : nextStep} // Trigger final submit or move next
           disabled={isSubmitting}
+          className="cursor-pointer"
         >
           {isSubmitting && isLastStep && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

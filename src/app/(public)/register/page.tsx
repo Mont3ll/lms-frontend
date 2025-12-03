@@ -83,12 +83,13 @@ export default function RegisterPage() {
       );
       // Optionally redirect after a delay or prompt user
       setTimeout(() => router.push("/login"), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Registration failed:", err);
+      const axiosError = err as { response?: { data?: { detail?: string; email?: string[]; password?: string[] } } };
       const errorMsg =
-        err.response?.data?.detail ||
-        err.response?.data?.email?.[0] ||
-        err.response?.data?.password?.[0] ||
+        axiosError.response?.data?.detail ||
+        axiosError.response?.data?.email?.[0] ||
+        axiosError.response?.data?.password?.[0] ||
         "Registration failed. Please try again.";
       setError(errorMsg);
       // Optionally set field-specific errors

@@ -14,7 +14,6 @@ export default function MyCoursesPage() {
   const {
     data: courseData,
     isLoading,
-    error,
     isError,
   } = useQuery({
     queryKey: [QUERY_KEYS.COURSES, { enrolled: true }], // Fetch enrolled courses

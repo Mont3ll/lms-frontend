@@ -24,7 +24,7 @@ export interface ContentItem extends MinimalContentItem {
   external_url?: string | null;
   file_id?: string | null; // Assuming file integration adds this
   assessment_id?: string | null; // Assuming assessment integration adds this
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
   // Add progress status if fetched together?

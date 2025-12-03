@@ -3,8 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
-import { AuthProvider } from "@/components/providers/AuthProvider"; // Assume this exists
-import { Toaster } from "@/components/ui/sonner"; // Import toaster
+import { AuthProvider } from "@/components/providers/AuthProvider";
+import { Toaster as SonnerToaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,23 +21,19 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        {/* Order matters: Theme -> Auth -> Query */}
+        {/* Order matters: Theme -> Query -> Auth */}
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            {" "}
-            {/* Provides auth state */}
-            <QueryProvider>
-              {" "}
-              {/* Provides TanStack Query client */}
+          <QueryProvider>
+            <AuthProvider>
               {children}
-              <Toaster /> {/* Add toaster component here */}
-            </QueryProvider>
-          </AuthProvider>
+              <SonnerToaster richColors position="top-right" />
+            </AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

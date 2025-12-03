@@ -1,10 +1,11 @@
-"use client"; // Need client component for useAuth and conditional rendering
+"use client"; // Still client for useAuth hook
 
 import React from "react";
-import { useRouter } from "next/navigation";
 import { Header } from "@/components/layouts/Header";
 import { SidebarNav } from "@/components/layouts/SidebarNav";
-import { useAuth } from "@/components/providers/AuthProvider"; // Corrected path
+import { useAuth } from "@/components/providers/AuthProvider";
+import Loading from "@/app/loading"; // Import root loading component
+import Link from "next/link";
 
 export default function LearnerLayout({
   children,
@@ -12,71 +13,55 @@ export default function LearnerLayout({
   children: React.ReactNode;
 }) {
   const { user, isLoading } = useAuth();
-  const router = useRouter();
 
-  // Handle loading state and unauthorized access
+  // Show loading state while auth context resolves user initially
+  // Middleware prevents unauthorized access, but context still needs to load user data
   if (isLoading) {
-    // Or use the root loading.tsx by default
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Loading user session...</p>
-        {/* Add a spinner */}
-      </div>
-    );
+    return <Loading />; // Use the root loading state
   }
 
+  // User should exist if middleware allowed access, but check defensively
   if (!user) {
-    // Redirect to login if user is not authenticated
-    // Using router.replace to avoid adding layout load to history
-    if (typeof window !== "undefined") {
-      // Ensure running client-side
-      router.replace("/login");
-    }
-    return null; // Render nothing while redirecting
+    // This case ideally shouldn't be reached if middleware is correct
+    console.error(
+      "LearnerLayout: User not found despite middleware allowing access.",
+    );
+    // Optional: Redirect to login as a fallback?
+    // if (typeof window !== 'undefined') window.location.href = '/login';
+    return <p>Error: User session not available.</p>; // Or a more user-friendly error
   }
 
-  if (
-    user.role !== "LEARNER" &&
-    user.role !== "ADMIN" &&
-    user.role !== "INSTRUCTOR"
-  ) {
-    // Basic check, adjust as needed
-    // Redirect if user role doesn't match expected layout roles
-    // Maybe redirect to their appropriate dashboard or show an error
-    if (typeof window !== "undefined") {
-      router.replace("/unauthorized"); // Or appropriate page
-    }
-    return null;
-  }
+  // We know user exists and is authorized for this layout (due to middleware)
+  // Pass the role to SidebarNav
+  const userRole = user.role; // Assuming role is on user object
 
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-      {/* Sidebar */}
-      <div className="hidden border-r bg-muted/40 md:block">
+    <div className="min-h-screen w-full">
+      {/* Fixed Sidebar */}
+      <div className="hidden md:block fixed left-0 top-0 z-40 h-screen w-[220px] lg:w-[280px] border-r bg-muted/40">
         <div className="flex h-full max-h-screen flex-col gap-2">
           <div className="flex h-16 items-center border-b px-4 lg:px-6">
             {/* Sidebar Header/Logo Area */}
-            <Link href="/" className="flex items-center gap-2 font-semibold">
-              {/* <Package2 className="h-6 w-6" /> Logo */}
+            <Link
+              href="/learner/dashboard"
+              className="flex items-center gap-2 font-semibold"
+            >
+              {/* <YourLogo className="h-6 w-6" /> */}
               <span className="">LMS Platform</span>
             </Link>
           </div>
-          <div className="flex-1">
-            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-              {/* Pass user role to SidebarNav */}
-              <SidebarNav userRole={user.role} />
+          <div className="flex-1 overflow-y-auto">
+            <nav className="grid items-start px-2 text-sm font-medium lg:px-4 py-4">
+              <SidebarNav userRole={userRole} /> {/* Pass role */}
             </nav>
           </div>
-          {/* Optional Sidebar Footer */}
-          {/* <div className="mt-auto p-4"> ... </div> */}
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex flex-col">
-        <Header /> {/* Include the shared header */}
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/20">
-          {/* Page content goes here */}
+      {/* Main Content Area with left margin to account for fixed sidebar */}
+      <div className="md:ml-[220px] lg:ml-[280px]">
+        <Header />
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/20 min-h-screen">
           {children}
         </main>
       </div>

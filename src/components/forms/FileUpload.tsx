@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone"; // npm install react-dropzone
-import { Input } from "@/components/ui/input";
+import { useDropzone, FileRejection } from "react-dropzone"; // npm install react-dropzone
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { UploadCloud, File as FileIcon, X } from "lucide-react";
@@ -30,7 +29,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const onDrop = useCallback(
-    (acceptedFiles: File[], rejectedFiles: any[]) => {
+    (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
       setError(null);
       if (rejectedFiles && rejectedFiles.length > 0) {
         // Handle rejection (e.g., wrong file type, size limit)

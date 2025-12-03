@@ -2,10 +2,20 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  reactStrictMode: true,
+  reactStrictMode: false, // Temporarily disable to fix drag and drop issues
+  productionBrowserSourceMaps: true, // Enable source maps in production
   // Optional: Image optimization domains
   images: {
     remotePatterns: [
+      // Allow Unsplash images for course thumbnails
+      {
+        protocol: 'https',
+        hostname: 'unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
       // Example: Allow images from your S3 bucket if URLs are direct
       // {
       //   protocol: 'https',
