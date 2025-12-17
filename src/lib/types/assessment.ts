@@ -28,6 +28,7 @@ export interface Assessment {
   id: string;
   course: string; // Course ID
   course_title: string;
+  course_slug: string;
   title: string;
   description?: string | null;
   assessment_type: "QUIZ" | "EXAM" | "ASSIGNMENT";
@@ -45,6 +46,13 @@ export interface Assessment {
   questions: Question[]; // Nested questions for detail view
   created_at: string;
   updated_at: string;
+  // User-specific attempt summary fields
+  user_attempts_count?: number;
+  user_best_score?: number | null;
+  user_best_percentage?: number | null;
+  user_has_passed?: boolean;
+  user_latest_attempt_status?: "IN_PROGRESS" | "SUBMITTED" | "GRADED" | null;
+  user_attempts_remaining?: number;
 }
 
 export interface AssessmentAttempt {

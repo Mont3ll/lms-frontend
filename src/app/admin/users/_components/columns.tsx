@@ -2,17 +2,10 @@
 import { ColumnDef, Row, HeaderContext, CellContext } from "@tanstack/react-table"
 import { User } from "@/lib/types"; // Your User type
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, MoreHorizontal } from "lucide-react"; // For sorting and actions
+import { ArrowUpDown } from "lucide-react"; // For sorting
 import { Badge } from "@/components/ui/badge"; // To display role/status
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/utils"; // Date formatter
+import { UserActionsCell } from "./UserActionsCell";
 
 // Define type based on User with additional columns for display
 type UserColumn = Pick<
@@ -95,6 +88,10 @@ export const columns: ColumnDef<UserColumn>[] = [
         </Badge>
       );
     },
+    filterFn: (row: Row<UserColumn>, id: string, value: string) => {
+      const isActive = row.getValue(id) as boolean;
+      return value === String(isActive);
+    },
   },
   // Tenant Column (if managing multiple)
   //   {
@@ -114,32 +111,16 @@ export const columns: ColumnDef<UserColumn>[] = [
   {
     id: "actions",
     cell: ({ row }: CellContext<UserColumn, unknown>) => {
-      const user = row.original; // Get user data
+      const user = row.original;
+      const userName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "User";
 
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(user.email)}
-            >
-              Copy Email
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {/* TODO: Replace with Links or modal triggers */}
-            <DropdownMenuItem>View Details</DropdownMenuItem>
-            <DropdownMenuItem>Edit User</DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-              Suspend User
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <UserActionsCell
+          userId={user.id}
+          userEmail={user.email}
+          userName={userName}
+          isActive={user.is_active}
+        />
       );
     },
   },

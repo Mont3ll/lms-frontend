@@ -8,6 +8,7 @@ interface MinimalContentItem {
   content_type: string; // Use backend choices e.g., 'TEXT', 'VIDEO', 'QUIZ'
   content_type_display: string;
   is_published: boolean;
+  is_required?: boolean; // Whether this item is required for course completion
 }
 
 // Minimal type for links

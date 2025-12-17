@@ -56,6 +56,13 @@ export default function EditUserPage() {
 
   const methods = useForm<AdminUserEditFormValues>({
     resolver: zodResolver(adminUserEditSchema),
+    defaultValues: {
+      email: "",
+      first_name: "",
+      last_name: "",
+      role: "LEARNER",
+      is_active: true,
+    },
   });
 
   const {
@@ -105,7 +112,11 @@ export default function EditUserPage() {
   }
 
   return (
-    <PageWrapper title="Edit User" className="max-w-3xl mx-auto">
+    <PageWrapper 
+      title="Edit User" 
+      description="Update user details, role assignments, and account status."
+      className="max-w-3xl mx-auto"
+    >
       <FormProvider {...methods}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Card>

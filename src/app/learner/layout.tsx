@@ -50,10 +50,9 @@ export default function LearnerLayout({
               <span className="">LMS Platform</span>
             </Link>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            <nav className="grid items-start px-2 text-sm font-medium lg:px-4 py-4">
-              <SidebarNav userRole={userRole} /> {/* Pass role */}
-            </nav>
+          <div className="flex-1 overflow-y-auto px-2 lg:px-4 py-4">
+            {/* SidebarNav renders its own nav element, don't wrap in another nav */}
+            <SidebarNav userRole={userRole} isSuperuser={user.is_superuser} />
           </div>
         </div>
       </div>

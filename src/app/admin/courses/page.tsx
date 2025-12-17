@@ -2,7 +2,7 @@
 import React from "react";
 import { useQuery } from '@tanstack/react-query';
 import { PageWrapper } from "@/components/layouts/PageWrapper";
-import { DataTable } from "@/components/features/common/DataTable";
+import { DataTable, FilterConfig } from "@/components/features/common/DataTable";
 import { fetchAllPlatformCourses } from '@/lib/api';
 import { QUERY_KEYS } from '@/lib/constants';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +17,18 @@ interface CourseRow {
   status: string;
   created_at: string;
 }
+
+const courseFilters: FilterConfig[] = [
+  {
+    columnId: "status",
+    label: "Status",
+    options: [
+      { label: "Draft", value: "DRAFT" },
+      { label: "Published", value: "PUBLISHED" },
+      { label: "Archived", value: "ARCHIVED" },
+    ],
+  },
+];
 
 // Define admin-specific columns for courses
 const adminCourseColumns = [
@@ -84,8 +96,17 @@ export default function AdminManageCoursesPage() {
   }
 
   return (
-    <PageWrapper title="Platform Courses">
-      <DataTable columns={adminCourseColumns} data={tableData} />
+    <PageWrapper 
+      title="Platform Courses"
+      description="View and manage all courses across the platform, including status and instructor assignments."
+    >
+      <DataTable 
+        columns={adminCourseColumns} 
+        data={tableData} 
+        filterColumnId="title"
+        filterInputPlaceholder="Search by course title..."
+        filters={courseFilters}
+      />
     </PageWrapper>
   );
 }

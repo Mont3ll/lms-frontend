@@ -22,7 +22,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DatePickerField } from "@/components/forms/DatePickerField"; // Date picker
 // import { Assessment } from '@/lib/types'; // Type
 
-// TODO: Define Assessment Schema in validators.ts
 const assessmentSchema = z.object({
   title: z.string().min(1, "Title required"),
   description: z.string().optional().nullable(),

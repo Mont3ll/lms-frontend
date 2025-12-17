@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Card,
@@ -76,20 +76,27 @@ interface AttemptStats {
 
 interface GradeDialogProps {
   attempt: AssessmentAttempt;
+  assessmentId: string;
   isOpen: boolean;
   onClose: () => void;
   onUpdate: (updatedAttempt: AssessmentAttempt) => void;
 }
 
-function GradeDialog({ attempt, isOpen, onClose, onUpdate }: GradeDialogProps) {
+function GradeDialog({ attempt, assessmentId, isOpen, onClose, onUpdate }: GradeDialogProps) {
   const [score, setScore] = useState(attempt.score?.toString() || "");
   const [feedback, setFeedback] = useState(attempt.feedback || "");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Reset state when attempt changes to prevent stale data
+  useEffect(() => {
+    setScore(attempt.score?.toString() || "");
+    setFeedback(attempt.feedback || "");
+  }, [attempt.id, attempt.score, attempt.feedback]);
+
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const updatedAttempt = await gradeManualAttempt(String(attempt.id), {
+      const updatedAttempt = await gradeManualAttempt(assessmentId, String(attempt.id), {
         score: parseFloat(score),
         feedback,
       });
@@ -234,50 +241,34 @@ export default function AssessmentResultsPage() {
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
   const [selectedAttempt, setSelectedAttempt] = useState<AssessmentAttempt | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [assessmentId, currentPage, statusFilter, searchTerm]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Load assessment details
-      const assessmentData = await fetchAssessmentDetails(assessmentId);
+      // Load assessment details and all attempts
+      const [assessmentData, attemptsResponse] = await Promise.all([
+        fetchAssessmentDetails(assessmentId),
+        fetchAssessmentAttemptsForAssessment(assessmentId),
+      ]);
+      
       setAssessment(assessmentData);
+      setAttempts(attemptsResponse);
+      setTotalPages(1); // No server-side pagination, all data loaded at once
 
-      // Load attempts with filters
-      const params: Record<string, string | number> = {
-        page: currentPage,
-        page_size: 20,
-      };
-
-      if (statusFilter !== "all") {
-        params.status = statusFilter;
-      }
-
-      if (searchTerm) {
-        params.search = searchTerm;
-      }
-
-      const attemptsResponse = await fetchAssessmentAttemptsForAssessment(
-        assessmentId,
-        params
-      );
-
-      setAttempts(attemptsResponse.results);
-      setTotalPages(Math.ceil(attemptsResponse.count / 20));
-
-      // Calculate statistics
-      calculateStats(attemptsResponse.results);
+      // Calculate statistics from all attempts
+      calculateStats(attemptsResponse);
     } catch (err) {
       setError("Failed to load assessment results");
       console.error(err);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [assessmentId]);
+
+  useEffect(() => {
+    loadData();
+  }, [assessmentId, loadData]);
 
   const calculateStats = (attemptsList: AssessmentAttempt[]) => {
     if (!attemptsList || attemptsList.length === 0) {
@@ -356,8 +347,89 @@ export default function AssessmentResultsPage() {
   };
 
   const handleExportResults = () => {
-    // TODO: Implement CSV export
-    toast.info("Export functionality coming soon");
+    if (filteredAttempts.length === 0) {
+      toast.error("No results to export");
+      return;
+    }
+
+    // Define CSV headers
+    const headers = [
+      "Student Email",
+      "Status",
+      "Score",
+      "Max Score",
+      "Percentage",
+      "Result",
+      "Started",
+      "Completed",
+      "Time Taken (minutes)",
+      "Feedback",
+    ];
+
+    // Map attempts to CSV rows
+    const rows = filteredAttempts.map((attempt) => {
+      const startTime = new Date(attempt.start_time);
+      const endTime = attempt.end_time ? new Date(attempt.end_time) : null;
+      const timeTaken = endTime
+        ? Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60))
+        : "";
+      const maxScore = attempt.max_score || assessment?.total_points || 0;
+      const percentage =
+        attempt.score !== null && attempt.score !== undefined
+          ? Math.round((attempt.score / maxScore) * 100)
+          : "";
+      const result =
+        attempt.is_passed === true
+          ? "Passed"
+          : attempt.is_passed === false
+            ? "Failed"
+            : "Pending";
+
+      return [
+        attempt.user.email,
+        attempt.status,
+        attempt.score ?? "",
+        maxScore,
+        percentage ? `${percentage}%` : "",
+        result,
+        startTime.toLocaleString(),
+        endTime ? endTime.toLocaleString() : "",
+        timeTaken,
+        attempt.feedback || "",
+      ];
+    });
+
+    // Convert to CSV string
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) =>
+        row
+          .map((cell) => {
+            // Escape cells that contain commas, quotes, or newlines
+            const cellStr = String(cell);
+            if (cellStr.includes(",") || cellStr.includes('"') || cellStr.includes("\n")) {
+              return `"${cellStr.replace(/"/g, '""')}"`;
+            }
+            return cellStr;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    const fileName = `${assessment?.title?.replace(/[^a-z0-9]/gi, "_") || "assessment"}_results_${new Date().toISOString().split("T")[0]}.csv`;
+    link.setAttribute("download", fileName);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(`Exported ${filteredAttempts.length} results to CSV`);
   };
 
   const filteredAttempts = (attempts || []).filter((attempt) => {
@@ -625,6 +697,7 @@ export default function AssessmentResultsPage() {
       {selectedAttempt && (
         <GradeDialog
           attempt={selectedAttempt}
+          assessmentId={assessmentId}
           isOpen={gradeDialogOpen}
           onClose={() => {
             setGradeDialogOpen(false);

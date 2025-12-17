@@ -16,6 +16,23 @@
 //   }
 // };
 
+// Cookie name must match middleware
+const AUTH_COOKIE_NAME = "authToken";
+
+// Cookie helper functions
+const setCookie = (name: string, value: string, days: number = 7): void => {
+  if (typeof window === "undefined") return;
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${name}=${value}; expires=${expires.toUTCString()}; path=/${secure}; SameSite=Lax`;
+};
+
+const deleteCookie = (name: string): void => {
+  if (typeof window === "undefined") return;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+};
+
 // Functions to manage token storage (already included conceptually in AuthProvider)
 export const getToken = (): string | null => {
   if (typeof window === "undefined") return null;
@@ -32,8 +49,13 @@ export const setTokens = (
   refreshToken: string | null,
 ): void => {
   if (typeof window === "undefined") return;
-  if (token) localStorage.setItem("authToken", token);
-  else localStorage.removeItem("authToken");
+  if (token) {
+    localStorage.setItem("authToken", token);
+    setCookie(AUTH_COOKIE_NAME, token, 7); // Sync to cookie for middleware
+  } else {
+    localStorage.removeItem("authToken");
+    deleteCookie(AUTH_COOKIE_NAME);
+  }
   if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
   else localStorage.removeItem("refreshToken");
 };
@@ -42,6 +64,7 @@ export const clearTokens = (): void => {
   if (typeof window === "undefined") return;
   localStorage.removeItem("authToken");
   localStorage.removeItem("refreshToken");
+  deleteCookie(AUTH_COOKIE_NAME); // Clear cookie when logging out
 };
 
 // Check if user has specific role (assuming user object is available)

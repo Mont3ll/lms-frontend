@@ -10,6 +10,7 @@ import {
   createContentItem,
   updateContentItem,
   getApiErrorMessage,
+  ContentItemData,
 } from "@/lib/api";
 import { QUERY_KEYS } from "@/lib/constants";
 import { PageWrapper } from "@/components/layouts/PageWrapper";
@@ -101,7 +102,7 @@ export default function ManageModulesPage() {
       itemData,
     }: {
       moduleId: string;
-      itemData: Partial<ContentItem>;
+      itemData: ContentItemData;
     }) => createContentItem(courseSlug, moduleId, itemData),
     onSuccess: () => {
       toast.success("Content Item Added", {
@@ -167,7 +168,7 @@ export default function ManageModulesPage() {
     setIsAddContentItemModalOpen(true);
   };
 
-  const handleAddContentItemSubmit = async (data: Partial<ContentItem>) => {
+  const handleAddContentItemSubmit = async (data: ContentItemData) => {
     if (!selectedModuleForContent) return;
     await addContentItemMutation.mutateAsync({
       moduleId: selectedModuleForContent.id,
@@ -220,7 +221,7 @@ export default function ManageModulesPage() {
 
   if (isLoading) {
     return (
-      <PageWrapper title="Loading Course...">
+      <PageWrapper title="Loading Course..." description="Add modules and content items to structure your course material.">
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
             <Skeleton key={i} className="h-32 w-full" />
@@ -232,7 +233,7 @@ export default function ManageModulesPage() {
 
   if (isError) {
     return (
-      <PageWrapper title="Error">
+      <PageWrapper title="Error" description="Add modules and content items to structure your course material.">
         <Alert>
           <Terminal className="h-4 w-4" />
           <AlertTitle>Error!</AlertTitle>
@@ -248,6 +249,7 @@ export default function ManageModulesPage() {
     <>
       <PageWrapper
         title={`Manage Content: ${course?.title || "Course"}`}
+        description="Add modules and content items to structure your course material."
         actions={
           <>
             <Button onClick={() => router.back()} variant="outline" className="mr-2">

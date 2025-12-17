@@ -3,7 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { ArrowUpDown, MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,14 +14,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
-import { Tenant } from '@/lib/types';
+import { Tenant } from "@/lib/types";
 
-// TODO: Add delete confirmation dialog logic
-const handleDelete = (tenantId: string) => {
-  alert(`Placeholder: Delete tenant ${tenantId}`);
-};
+interface ColumnsOptions {
+  onDelete?: (tenant: Tenant) => void;
+  isSuperuser?: boolean;
+}
 
-export const columns: ColumnDef<Tenant>[] = [
+export const createColumns = (options?: ColumnsOptions): ColumnDef<Tenant>[] => [
   {
     accessorKey: "name",
     header: ({ column }) => (
@@ -78,6 +78,7 @@ export const columns: ColumnDef<Tenant>[] = [
     id: "actions",
     cell: ({ row }) => {
       const tenant = row.original;
+      const isSuperuser = options?.isSuperuser === true;
 
       return (
         <DropdownMenu>
@@ -89,21 +90,34 @@ export const columns: ColumnDef<Tenant>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href={`/admin/tenants/${tenant.id}/edit`}>
-                <Edit className="mr-2 h-4 w-4" /> Edit
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-              onClick={() => handleDelete(tenant.id)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
-            </DropdownMenuItem>
+            {isSuperuser ? (
+              <>
+                <DropdownMenuItem asChild>
+                  <Link href={`/admin/tenants/${tenant.id}/edit`}>
+                    <Edit className="mr-2 h-4 w-4" /> Edit
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  onClick={() => options?.onDelete?.(tenant)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem asChild>
+                <Link href={`/admin/tenants/${tenant.id}`}>
+                  <Eye className="mr-2 h-4 w-4" /> View Details
+                </Link>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       );
     },
   },
 ];
+
+// Export default columns for backward compatibility
+export const columns = createColumns();

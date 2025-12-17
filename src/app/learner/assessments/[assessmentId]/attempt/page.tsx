@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,12 +22,14 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { QuestionRenderer } from "@/components/features/assessments/QuestionRenderer"; // Component to render questions
 import { ConfirmationDialog } from "@/components/features/common/ConfirmationDialog"; // For submit confirmation
+import axios from "axios";
 import {
   startAssessmentAttempt,
   submitAssessmentAttempt,
-} from "@/lib/api"; // Assume API functions exist
-import { Assessment, Question, AssessmentAttempt } from "@/lib/types"; // Import base types
-import { getApiErrorMessage } from "@/lib/api";
+  resumeAssessmentAttempt,
+  getApiErrorMessage,
+} from "@/lib/api";
+import { Assessment, Question, AssessmentAttempt } from "@/lib/types";
 
 // Helper to dynamically build validation schema based on questions
 const buildAttemptSchema = (questions: Question[]) => {
@@ -49,8 +51,21 @@ const buildAttemptSchema = (questions: Question[]) => {
       schemaShape[q.id] = z
         .string()
         .min(1, { message: "Please provide an answer" });
+    } else if (q.question_type === "MT") {
+      // Matching questions store answers as { prompt_id: selected_match_id }
+      schemaShape[q.id] = z
+        .record(z.string())
+        .refine((val) => Object.keys(val).length > 0, {
+          message: "Please match all items",
+        });
+    } else if (q.question_type === "FB") {
+      // Fill-in-blanks store answers as { blank_id: answer_text }
+      schemaShape[q.id] = z
+        .record(z.string())
+        .refine((val) => Object.values(val).some((v) => v.trim().length > 0), {
+          message: "Please fill in the blanks",
+        });
     }
-    // Add validation for other types (Matching, Fill Blanks etc.)
   });
   return z.object(schemaShape);
 };
@@ -58,8 +73,10 @@ const buildAttemptSchema = (questions: Question[]) => {
 export default function AssessmentAttemptPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const assessmentId = params.assessmentId as string;
+  const existingAttemptId = searchParams.get("attemptId"); // Query param for resuming existing attempt
 
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [attemptData, setAttemptData] = useState<AssessmentAttempt | null>(
@@ -68,6 +85,8 @@ export default function AssessmentAttemptPage() {
   const [assessmentInfo, setAssessmentInfo] = useState<Assessment | null>(null); // Store assessment details from start attempt
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isTimeUp, setIsTimeUp] = useState(false);
+  const hasStartedRef = React.useRef(false); // Track if start mutation has been initiated
+  const [isLoadingExisting, setIsLoadingExisting] = useState(false); // Track loading state for existing attempt
 
   // --- State & Data Fetching ---
 
@@ -89,6 +108,25 @@ export default function AssessmentAttemptPage() {
       });
     },
     onError: (error) => {
+      // Check if this is a 409 conflict with existing attempt data
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        const existingAttempt = error.response.data?.existing_attempt;
+        if (existingAttempt) {
+          // Resume the existing attempt
+          setAttemptId(existingAttempt.attempt_id);
+          setAssessmentInfo(existingAttempt.assessment);
+          if (existingAttempt.time_limit_minutes) {
+            const endTime =
+              new Date(existingAttempt.start_time).getTime() +
+              existingAttempt.time_limit_minutes * 60 * 1000;
+            setTimeLeft(Math.max(0, endTime - Date.now()));
+          }
+          toast.info("Resuming Attempt", {
+            description: "You have an existing attempt in progress. Continuing where you left off.",
+          });
+          return;
+        }
+      }
       toast.error("Error", {
         description: `Could not start attempt: ${getApiErrorMessage(error)}`,
       });
@@ -111,7 +149,9 @@ export default function AssessmentAttemptPage() {
       // Invalidate related queries if needed
       queryClient.invalidateQueries({
         queryKey: ["assessmentAttempts", assessmentId],
-      }); // Example query key
+      });
+      // Navigate to the result page
+      router.push(`/learner/assessments/attempt/${data.id}`);
     },
     onError: (error) => {
       toast.error("Submission Error", {
@@ -134,17 +174,59 @@ export default function AssessmentAttemptPage() {
     handleSubmit,
   } = methods;
 
-  // Effect to start attempt on mount
+  // Effect to start attempt on mount or resume existing attempt
   useEffect(() => {
-    if (
-      assessmentId &&
-      !attemptId &&
-      !startMutation.isPending &&
-      !attemptData
-    ) {
+    if (hasStartedRef.current || attemptId || attemptData) {
+      return; // Already started or loaded
+    }
+
+    // If we have an existing attemptId from query params, resume that attempt directly
+    if (existingAttemptId) {
+      hasStartedRef.current = true;
+      setIsLoadingExisting(true);
+      
+      resumeAssessmentAttempt(existingAttemptId)
+        .then((data) => {
+          // Resume endpoint returns the same format as start endpoint
+          setAttemptId(data.attempt_id);
+          setAssessmentInfo(data.assessment);
+          
+          // Calculate remaining time if there's a time limit
+          if (data.time_limit_minutes) {
+            const endTime =
+              new Date(data.start_time).getTime() +
+              data.time_limit_minutes * 60 * 1000;
+            setTimeLeft(Math.max(0, endTime - Date.now()));
+          }
+          
+          toast.info("Resuming Attempt", {
+            description: "Continuing where you left off.",
+          });
+        })
+        .catch((error) => {
+          toast.error("Error", {
+            description: `Could not resume attempt: ${getApiErrorMessage(error)}`,
+          });
+          router.back();
+        })
+        .finally(() => {
+          setIsLoadingExisting(false);
+        });
+    } else if (assessmentId) {
+      // No existing attemptId, start a new attempt
+      hasStartedRef.current = true;
       startMutation.mutate();
     }
-  }, [assessmentId, attemptId, startMutation, attemptData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessmentId, attemptId, attemptData, existingAttemptId, router]);
+
+  // --- Submission Logic ---
+  const onSubmit = useCallback((data: Record<string, string | number | boolean | string[]>) => {
+    console.log("Submitting answers:", data);
+    if (attemptId && !submitMutation.isPending) {
+      submitMutation.mutate(data);
+    }
+  }, [attemptId, submitMutation]);
 
   // Effect for timer
   useEffect(() => {
@@ -177,20 +259,12 @@ export default function AssessmentAttemptPage() {
     }, 1000);
 
     return () => clearInterval(timer); // Cleanup timer
-  }, [timeLeft, isTimeUp, submitMutation.isSuccess, attemptData, handleSubmit]); // Add handleSubmit to dependencies
-
-  // --- Submission Logic ---
-  const onSubmit = (data: Record<string, string | number | boolean | string[]>) => {
-    console.log("Submitting answers:", data);
-    if (attemptId && !submitMutation.isPending) {
-      submitMutation.mutate(data);
-    }
-  };
+  }, [timeLeft, isTimeUp, submitMutation.isSuccess, attemptData, handleSubmit, onSubmit]);
 
   // --- Render Logic ---
-  if (startMutation.isPending || (!assessmentInfo && !attemptData)) {
+  if (startMutation.isPending || isLoadingExisting || (!assessmentInfo && !attemptData)) {
     return (
-      <PageWrapper title="Loading Assessment...">
+      <PageWrapper title="Loading Assessment..." description="Preparing your assessment attempt.">
         <Card>
           <CardContent className="p-6 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
@@ -201,9 +275,9 @@ export default function AssessmentAttemptPage() {
     );
   }
 
-  if (startMutation.isError) {
+  if (startMutation.isError && !assessmentInfo) {
     return (
-      <PageWrapper title="Error">
+      <PageWrapper title="Error" description="There was a problem starting the assessment.">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Failed to Start Attempt</AlertTitle>
@@ -227,7 +301,7 @@ export default function AssessmentAttemptPage() {
   if (submitMutation.isSuccess && attemptData) {
     const showResults = assessmentInfo?.show_results_immediately ?? false; // Default to not showing if assessmentInfo missing
     return (
-      <PageWrapper title={assessmentInfo?.title ?? "Assessment Results"}>
+      <PageWrapper title={assessmentInfo?.title ?? "Assessment Results"} description="Review your assessment results and feedback.">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -275,7 +349,7 @@ export default function AssessmentAttemptPage() {
               </p>
             ) : null}
             <Button
-              onClick={() => router.push(`/courses/${assessmentInfo?.course}`)}
+              onClick={() => router.push(`/courses/${assessmentInfo?.course_slug}`)}
               variant="outline"
             >
               Back to Course
@@ -301,7 +375,7 @@ export default function AssessmentAttemptPage() {
     };
 
     return (
-      <PageWrapper title={assessmentInfo.title}>
+      <PageWrapper title={assessmentInfo.title} description="Answer each question carefully. Submit when you're ready.">
         <FormProvider {...methods}>
           {" "}
           {/* Provide form context */}
@@ -378,7 +452,7 @@ export default function AssessmentAttemptPage() {
 
   // Should not be reached if logic is correct, but include fallback
   return (
-    <PageWrapper title="Assessment">
+    <PageWrapper title="Assessment" description="Loading assessment state.">
       <p>Loading assessment state...</p>
     </PageWrapper>
   );

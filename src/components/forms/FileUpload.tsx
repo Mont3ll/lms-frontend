@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { useDropzone, FileRejection } from "react-dropzone"; // npm install react-dropzone
+import { useDropzone, FileRejection, Accept } from "react-dropzone"; // npm install react-dropzone
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { UploadCloud, File as FileIcon, X } from "lucide-react";
@@ -8,15 +8,34 @@ import { cn } from "@/lib/utils";
 interface FileUploadProps {
   onFileSelect: (file: File | null) => void; // Callback when file selected/removed
   label?: string;
-  accept?: Record<string, string[]>; // e.g., { 'image/*': ['.png', '.jpg'] }
+  accept?: Accept | string; // e.g., { 'image/*': ['.png', '.jpg'] } or "image/*"
+  maxSize?: number; // Max file size in bytes
+  placeholder?: string; // Placeholder text
   className?: string;
   initialFile?: File | { name: string }; // Allow showing initial file name
 }
 
+// Convert string accept to react-dropzone Accept format
+function normalizeAccept(accept?: Accept | string): Accept | undefined {
+  if (!accept) return undefined;
+  if (typeof accept === "string") {
+    // Convert "image/*" or "image/png,image/jpg" to { 'image/*': [] } format
+    const types = accept.split(",").map((t) => t.trim());
+    const result: Accept = {};
+    for (const type of types) {
+      result[type] = [];
+    }
+    return result;
+  }
+  return accept;
+}
+
 export const FileUpload: React.FC<FileUploadProps> = ({
   onFileSelect,
-  label = "Upload File",
+  label,
   accept,
+  maxSize,
+  placeholder,
   className,
   initialFile,
 }) => {
@@ -53,7 +72,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: accept,
+    accept: normalizeAccept(accept),
+    maxSize,
     multiple: false, // Only allow single file upload
   });
 
@@ -107,7 +127,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                   <span className="font-semibold">Click to upload</span> or drag
                   and drop
                 </p>
-                {/* <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (MAX. 800x400px)</p> */}
+                {placeholder && (
+                  <p className="text-xs text-muted-foreground">{placeholder}</p>
+                )}
               </>
             )}
           </div>

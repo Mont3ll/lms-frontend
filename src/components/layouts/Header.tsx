@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CircleUser, Bell, Menu } from "lucide-react"; // Import icons
+import { CircleUser, Menu } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,10 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"; // For mobile nav
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { ModeToggle } from "@/components/ui/mode-toggle"; // Assuming you create this based on shadcn docs
-import { SidebarNav } from "./SidebarNav"; // Import SidebarNav for mobile sheet
+import { ModeToggle } from "@/components/ui/mode-toggle";
+import { SidebarNav } from "./SidebarNav";
+import { NotificationsDropdown } from "@/components/features/notifications/NotificationsDropdown";
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -42,7 +43,7 @@ export function Header() {
         </SheetTrigger>
         <SheetContent side="left">
           {/* Render SidebarNav inside the mobile sheet */}
-          <nav className="grid gap-6 text-lg font-medium">
+          <div className="grid gap-6 text-lg font-medium">
             <Link
               href="/dashboard"
               className="flex items-center gap-2 text-lg font-semibold mb-4"
@@ -51,9 +52,9 @@ export function Header() {
               <span className="">LMS Platform</span>
             </Link>
             {user && (
-              <SidebarNav userRole={user.role} className="flex-col space-y-1" />
+              <SidebarNav userRole={user.role} isSuperuser={user.is_superuser} className="flex-col space-y-1" />
             )}
-          </nav>
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -70,11 +71,8 @@ export function Header() {
             />
           </div> */}
         </form>
-        <ModeToggle /> {/* Dark mode toggle */}
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <Bell className="h-5 w-5" /> {/* Placeholder for notifications */}
-          <span className="sr-only">Notifications</span>
-        </Button>
+        <ModeToggle />
+        <NotificationsDropdown />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" size="icon" className="rounded-full">
@@ -83,19 +81,19 @@ export function Header() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
+            <DropdownMenuLabel key="label">My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator key="sep-1" />
+            <DropdownMenuItem key="profile" asChild>
               <Link href="/profile">Profile</Link>
             </DropdownMenuItem>
             {/* Add settings etc. based on role */}
             {user?.role === "ADMIN" && (
-              <DropdownMenuItem asChild>
+              <DropdownMenuItem key="admin-settings" asChild>
                 <Link href="/settings">Admin Settings</Link>
               </DropdownMenuItem>
             )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
+            <DropdownMenuSeparator key="sep-2" />
+            <DropdownMenuItem key="logout" onClick={logout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

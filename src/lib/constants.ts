@@ -12,7 +12,7 @@ export const USER_ROLES = {
   ADMIN: "ADMIN",
   INSTRUCTOR: "INSTRUCTOR",
   LEARNER: "LEARNER",
-};
+} as const;
 
 export const QUERY_KEYS = {
   USER_PROFILE: ["userProfile"],
@@ -26,6 +26,8 @@ export const QUERY_KEYS = {
   INSTRUCTOR_DASHBOARD_STATS: ["instructorDashboardStats"],
   INSTRUCTOR_ANALYTICS: ["instructorAnalytics"],
   LEARNER_DASHBOARD_STATS: ["learnerDashboardStats"],
+  LEARNER_RECOMMENDATIONS: ["learnerRecommendations"],
+  LEARNER_INSIGHTS: ["learnerInsights"],
   CERTIFICATES: ["certificates"],
   NOTIFICATION_PREFERENCES: ["notificationPreferences"],
   NOTIFICATIONS: ["notifications"],
@@ -67,5 +69,22 @@ export const QUERY_KEYS = {
   INSTRUCTOR_ASSESSMENTS: ["instructorAssessments"],
   INSTRUCTOR_COURSES: ["instructorCourses"],
   COURSE_ENROLLMENTS: (courseSlug: string) => ["courseEnrollments", courseSlug],
+  ADMIN_ANALYTICS: (timeRange: string, tenantId?: string) => ["adminAnalytics", timeRange, tenantId],
+  
+  // Custom Dashboards
+  CUSTOM_DASHBOARDS: ["customDashboards"],
+  CUSTOM_DASHBOARD_DETAIL: (dashboardId: string) => ["customDashboard", dashboardId],
+  WIDGET_DATA: (widgetId: string, timeRange?: string) => ["widgetData", widgetId, timeRange],
+  WIDGET_META: ["widgetMeta"],
+  
+  // Skills
+  SKILLS: ["skills"],
+  SKILL_DETAILS: (skillId: string) => ["skillDetails", skillId],
+  
+  // Personalized Paths
+  PERSONALIZED_PATHS: ["personalizedPaths"],
+  
+  // My Assessment Attempts (for current user)
+  MY_ASSESSMENT_ATTEMPTS: ["myAssessmentAttempts"],
   // Add other query keys as needed
 } as const;

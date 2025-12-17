@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PageWrapper } from "@/components/layouts/PageWrapper";
 import { CertificateCard } from "@/components/features/certificates/CertificateCard"; // Needs creation
@@ -8,10 +8,13 @@ import { fetchCertificates } from "@/lib/api"; // Assume API function exists
 import { QUERY_KEYS } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Award } from "lucide-react";
+import { Terminal, Award, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Certificate } from "@/lib/types"; // Define Certificate type
 
 export default function MyCertificatesPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  
   const {
     data: certificatesData,
     isLoading,
@@ -19,8 +22,13 @@ export default function MyCertificatesPage() {
   } = useQuery<{ results: Certificate[] }>({
     // Assuming non-paginated for now
     queryKey: [QUERY_KEYS.CERTIFICATES], // Define key
-    queryFn: fetchCertificates, // API function
+    queryFn: () => fetchCertificates(), // API function
   });
+
+  // Filter certificates based on search query
+  const filteredCertificates = certificatesData?.results?.filter((certificate) =>
+    certificate.course_title.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
 
   const renderSkeletons = () =>
     Array.from({ length: 3 }).map((_, index) => (
@@ -38,7 +46,7 @@ export default function MyCertificatesPage() {
     ));
 
   return (
-    <PageWrapper title="My Certificates">
+    <PageWrapper title="My Certificates" description="View and download certificates earned from completed courses.">
       {isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {renderSkeletons()}
@@ -71,10 +79,31 @@ export default function MyCertificatesPage() {
         !isError &&
         certificatesData?.results &&
         certificatesData.results.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {certificatesData.results.map((certificate) => (
-              <CertificateCard key={certificate.id} certificate={certificate} />
-            ))}
+          <div className="space-y-4">
+            {/* Search Input */}
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Filter by course title..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            {filteredCertificates.length === 0 ? (
+              <div className="text-center py-12 border rounded-lg">
+                <p className="text-muted-foreground">
+                  No certificates match your search.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filteredCertificates.map((certificate) => (
+                  <CertificateCard key={certificate.id} certificate={certificate} />
+                ))}
+              </div>
+            )}
           </div>
         )}
     </PageWrapper>

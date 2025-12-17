@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api"; // Import API client
 import { User } from "@/lib/types";
+import { setTenantSlug, clearTenantSlug } from "@/lib/utils";
 import axios from "axios"; // Import axios for type checking if needed
 
 interface AuthContextType {
@@ -24,6 +25,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Cookie helper functions
+const AUTH_COOKIE_NAME = "authToken";
+
+const setCookie = (name: string, value: string, days: number = 7): void => {
+  if (typeof window === "undefined") return;
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  // Set cookie with secure flag in production, SameSite=Lax for CSRF protection
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${name}=${value}; expires=${expires.toUTCString()}; path=/${secure}; SameSite=Lax`;
+};
+
+const deleteCookie = (name: string): void => {
+  if (typeof window === "undefined") return;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+};
+
 // Function to get tokens from storage
 const getTokensFromStorage = (): {
   token: string | null;
@@ -36,30 +54,38 @@ const getTokensFromStorage = (): {
   };
 };
 
-// Function to set tokens in storage
+// Function to set tokens in storage (localStorage + cookie for middleware)
 const setTokensInStorage = (
   token: string | null,
   refreshToken: string | null,
 ): void => {
   if (typeof window === "undefined") return;
-  if (token) localStorage.setItem("authToken", token);
-  else localStorage.removeItem("authToken");
+  if (token) {
+    localStorage.setItem("authToken", token);
+    setCookie(AUTH_COOKIE_NAME, token, 7); // Sync to cookie for middleware
+  } else {
+    localStorage.removeItem("authToken");
+    deleteCookie(AUTH_COOKIE_NAME); // Clear cookie when logging out
+  }
   if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
   else localStorage.removeItem("refreshToken");
 };
+
+// Define query key constant outside component to avoid dependency issues
+const USER_PROFILE_QUERY_KEY = ["userProfile"];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const USER_PROFILE_QUERY_KEY = ["userProfile"]; // Define query key constant
 
   // --- Logout Function ---
   const logout = useCallback(() => {
     console.log("AuthProvider: Logging out");
     setUser(null);
     setTokensInStorage(null, null);
+    clearTenantSlug(); // Clear tenant slug on logout
     apiClient.defaults.headers.common["Authorization"] = "";
     // Invalidate profile query AND clear query cache entirely for clean state
     queryClient.removeQueries({ queryKey: USER_PROFILE_QUERY_KEY });
@@ -120,6 +146,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             staleTime: 1000 * 60 * 5, // 5 minutes stale time
           });
           setUser(userData);
+          // Store tenant slug for API calls when subdomain is not available
+          if (userData.tenant_slug) {
+            setTenantSlug(userData.tenant_slug);
+          }
           console.log(
             "AuthProvider: User profile fetched successfully:",
             userData?.email,

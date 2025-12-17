@@ -18,6 +18,9 @@ import {
   FileText, // For Reports (alternative)
   BarChartBig, // For Analytics
   Building, // For Tenants
+  Target, // For Skills
+  Search, // For Course Catalog
+  Bell, // For Notifications
 } from "lucide-react";
 
 interface NavItem {
@@ -25,6 +28,7 @@ interface NavItem {
   title: string;
   icon: LucideIcon;
   roles: ("ADMIN" | "INSTRUCTOR" | "LEARNER")[]; // Valid backend roles
+  requiresSuperuser?: boolean; // If true, only show to superusers
   // Optional: Add a 'matchPaths' array for more complex active state highlighting
   // matchPaths?: string[];
 }
@@ -39,9 +43,9 @@ const navItems: NavItem[] = [
     roles: ["LEARNER", "INSTRUCTOR", "ADMIN"],
   },
   {
-    href: "/profile", // Assuming a generic /profile page, adjust if role-specific
-    title: "My Profile",
-    icon: Users, // Or UserCircle
+    href: "/notifications", // View all notifications
+    title: "Notifications",
+    icon: Bell,
     roles: ["LEARNER", "INSTRUCTOR", "ADMIN"],
   },
 
@@ -50,6 +54,12 @@ const navItems: NavItem[] = [
     href: "/learner/courses", // Path for learner's courses
     title: "My Courses",
     icon: BookOpen,
+    roles: ["LEARNER"],
+  },
+  {
+    href: "/learner/catalog", // Browse available courses
+    title: "Browse Courses",
+    icon: Search,
     roles: ["LEARNER"],
   },
   {
@@ -68,6 +78,12 @@ const navItems: NavItem[] = [
     href: "/learner/learning-paths",
     title: "Learning Paths",
     icon: FolderKanban,
+    roles: ["LEARNER"],
+  },
+  {
+    href: "/learner/skills",
+    title: "Skills",
+    icon: Target,
     roles: ["LEARNER"],
   },
 
@@ -110,6 +126,7 @@ const navItems: NavItem[] = [
     title: "Manage Tenants",
     icon: Building,
     roles: ["ADMIN"],
+    requiresSuperuser: true, // Only superusers can manage tenants
   },
   {
     href: "/admin/users",
@@ -124,10 +141,17 @@ const navItems: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
+    href: "/admin/skills", // Admin skill management
+    title: "Manage Skills",
+    icon: Target,
+    roles: ["ADMIN"],
+  },
+  {
     href: "/admin/settings", // Root for platform settings
     title: "Platform Settings",
     icon: Settings,
     roles: ["ADMIN"],
+    requiresSuperuser: true, // Only superusers can access platform settings
   },
   // Specific settings sub-pages can be added if direct nav is desired
   // { href: "/admin/settings/models", title: "AI Models", icon: Cpu, roles: ["ADMIN"] },
@@ -144,14 +168,21 @@ const navItems: NavItem[] = [
 
 interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
   userRole: "ADMIN" | "INSTRUCTOR" | "LEARNER";
+  isSuperuser?: boolean;
 }
 
-export function SidebarNav({ className, userRole, ...props }: SidebarNavProps) {
+export function SidebarNav({ className, userRole, isSuperuser = false, ...props }: SidebarNavProps) {
   const pathname = usePathname();
 
-  // Filter items based on the current user's role
+  // Filter items based on the current user's role and superuser status
   const filteredNavItems = navItems.filter(
-    (item) => item.roles.includes(userRole)
+    (item) => {
+      // First check role
+      if (!item.roles.includes(userRole)) return false;
+      // Then check superuser requirement
+      if (item.requiresSuperuser && !isSuperuser) return false;
+      return true;
+    }
   );
 
   // The previous reduce logic for uniqueness might not be strictly necessary anymore

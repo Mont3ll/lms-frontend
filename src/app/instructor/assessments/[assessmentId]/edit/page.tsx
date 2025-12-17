@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,13 +59,7 @@ export default function EditAssessmentPage() {
     return total + (question.points || 0);
   }, 0) || 0;
 
-  useEffect(() => {
-    if (assessmentId) {
-      fetchAssessment();
-    }
-  }, [assessmentId]);
-
-  const fetchAssessment = async () => {
+  const fetchAssessment = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiClient.get(`/instructor/assessments/${assessmentId}/`);
@@ -100,7 +94,13 @@ export default function EditAssessmentPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [assessmentId]);
+
+  useEffect(() => {
+    if (assessmentId) {
+      fetchAssessment();
+    }
+  }, [assessmentId, fetchAssessment]);
 
   const handleSave = async () => {
     if (!assessment) return;
@@ -738,7 +738,7 @@ export default function EditAssessmentPage() {
                             <div key={answerIndex} className="flex items-center gap-2">
                               <Input
                                 placeholder={`Acceptable answer ${answerIndex + 1}`}
-                                value={answer}
+                                value={answer || ''}
                                 onChange={(e) => {
                                   const typeData = question.type_specific_data as { acceptable_answers?: string[] } | undefined;
                                   const answers = [...(typeData?.acceptable_answers || [''])];
@@ -1111,7 +1111,7 @@ export default function EditAssessmentPage() {
                                   <div key={answerIndex} className="flex items-center gap-2">
                                     <Input
                                       placeholder={`Answer ${answerIndex + 1}`}
-                                      value={answer}
+                                      value={answer || ''}
                                       onChange={(e) => {
                                         const blanks = [...((question.type_specific_data as TypeSpecificData)?.blank_answers || [])];
                                         const answers = [...(blanks[blankIndex]?.correct_answers || [''])];

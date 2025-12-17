@@ -46,7 +46,7 @@ export const LearningPathCard: React.FC<LearningPathCardProps> = ({
       {/* {learningPath.thumbnail_url && ... } */}
       <CardHeader>
         <CardTitle className="text-lg hover:text-primary">
-          <Link href={`/learning-paths/${learningPath.slug}`}>
+          <Link href={`/learner/learning-paths/${learningPath.slug}`}>
             {learningPath.title}
           </Link>
         </CardTitle>
@@ -78,7 +78,7 @@ export const LearningPathCard: React.FC<LearningPathCardProps> = ({
       </CardContent>
       <CardFooter className="flex justify-end">
         <Button variant="default" size="sm" asChild>
-          <Link href={`/learning-paths/${learningPath.slug}`}>
+          <Link href={`/learner/learning-paths/${learningPath.slug}`}>
             {isCompleted
               ? "View Path"
               : progress

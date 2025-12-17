@@ -3,7 +3,7 @@ import React from "react";
 import { useQuery } from '@tanstack/react-query';
 import { ColumnDef } from "@tanstack/react-table";
 import { PageWrapper } from "@/components/layouts/PageWrapper";
-import { DataTable } from "@/components/features/common/DataTable";
+import { DataTable, FilterConfig } from "@/components/features/common/DataTable";
 import { fetchInstructorAssessments } from '@/lib/api';
 import { QUERY_KEYS } from '@/lib/constants';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +22,18 @@ interface InstructorAssessment {
   attempts_count?: number;
   created_at: string;
 }
+
+const assessmentFilters: FilterConfig[] = [
+  {
+    columnId: "assessment_type",
+    label: "Type",
+    options: [
+      { label: "Quiz", value: "QUIZ" },
+      { label: "Exam", value: "EXAM" },
+      { label: "Assignment", value: "ASSIGNMENT" },
+    ],
+  },
+];
 
 // Define columns for instructor assessments
 const assessmentColumns: ColumnDef<InstructorAssessment>[] = [
@@ -89,7 +101,7 @@ export default function InstructorAssessmentsPage() {
 
   if (isLoading) {
     return (
-      <PageWrapper title="Manage Assessments">
+      <PageWrapper title="Manage Assessments" description="Create quizzes, exams, and assignments for your courses. Review results and grade submissions.">
         <div className="space-y-4">
           {Array.from({ length: 8 }).map((_, index) => (
             <Skeleton key={index} className="h-16 w-full" />
@@ -101,7 +113,7 @@ export default function InstructorAssessmentsPage() {
 
   if (isError) {
     return (
-      <PageWrapper title="Manage Assessments">
+      <PageWrapper title="Manage Assessments" description="Create quizzes, exams, and assignments for your courses. Review results and grade submissions.">
         <Alert>
           <Terminal className="h-4 w-4" />
           <AlertTitle>Error Loading Assessments</AlertTitle>
@@ -116,6 +128,7 @@ export default function InstructorAssessmentsPage() {
   return (
     <PageWrapper
       title="Manage Assessments"
+      description="Create quizzes, exams, and assignments for your courses. Review results and grade submissions."
       actions={
         <Button asChild>
           <Link href="/instructor/assessments/new">
@@ -125,7 +138,13 @@ export default function InstructorAssessmentsPage() {
         </Button>
       }
     >
-      <DataTable columns={assessmentColumns} data={tableData} />
+      <DataTable 
+        columns={assessmentColumns} 
+        data={tableData} 
+        filterColumnId="title"
+        filterInputPlaceholder="Search by assessment title..."
+        filters={assessmentFilters}
+      />
     </PageWrapper>
   );
 }

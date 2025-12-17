@@ -54,6 +54,7 @@ export default function AdminLayout({
   }
 
   const userRole = user.role;
+  const isSuperuser = user.is_superuser ?? false;
 
   return (
     <div className="min-h-screen w-full">
@@ -70,13 +71,9 @@ export default function AdminLayout({
               <span className="">LMS Admin</span> {/* Admin specific title? */}
             </Link>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            {" "}
-            {/* Add scroll for long nav */}
-            <nav className="grid items-start px-2 text-sm font-medium lg:px-4 py-4">
-              {/* Ensure SidebarNav filters correctly based on ADMIN role */}
-              <SidebarNav userRole={userRole} />
-            </nav>
+          <div className="flex-1 overflow-y-auto px-2 lg:px-4 py-4">
+            {/* SidebarNav renders its own nav element, don't wrap in another nav */}
+            <SidebarNav userRole={userRole} isSuperuser={isSuperuser} />
           </div>
         </div>
       </aside>

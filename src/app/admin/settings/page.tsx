@@ -2,9 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { PageWrapper } from "@/components/layouts/PageWrapper";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // For organizing settings
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -12,18 +14,121 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, ShieldX } from "lucide-react";
 // Import specific settings forms
-// import { GeneralSettingsForm } from './_components/GeneralSettingsForm';
-// import { EmailSettingsForm } from './_components/EmailSettingsForm';
-// import { StorageSettingsForm } from './_components/StorageSettingsForm';
-// import { AISettingsForm } from './_components/AISettingsForm'; // Link to manage Model Configs
+import { GeneralSettingsForm } from "./_components/GeneralSettingsForm";
+import { EmailSettingsForm } from "./_components/EmailSettingsForm";
+import { StorageSettingsForm } from "./_components/StorageSettingsForm";
+import { IntegrationsSettingsForm } from "./_components/IntegrationsSettingsForm";
+import { fetchPlatformSettings, getApiErrorMessage } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function PlatformSettingsPage() {
-  // TODO: Fetch current settings if they are stored in the database and editable via API
-  // const { data: settingsData, isLoading } = useQuery(...)
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+  const isSuperuser = user?.is_superuser ?? false;
+
+  const { data: settingsData, isLoading, error } = useQuery({
+    queryKey: ["platformSettings"],
+    queryFn: fetchPlatformSettings,
+    enabled: isSuperuser, // Only fetch if superuser
+  });
+
+  // Show loading while auth is loading
+  if (authLoading) {
+    return (
+      <PageWrapper title="Platform Settings">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-3/4" />
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  // Show access denied for non-superusers
+  if (!isSuperuser) {
+    return (
+      <PageWrapper title="Platform Settings">
+        <Alert variant="destructive">
+          <ShieldX className="h-4 w-4" />
+          <AlertTitle>Access Denied</AlertTitle>
+          <AlertDescription>
+            You don&apos;t have permission to access Platform Settings. This page is only accessible to superusers.
+          </AlertDescription>
+        </Alert>
+        <div className="mt-4">
+          <Button variant="outline" onClick={() => router.push("/admin/dashboard")}>
+            Return to Dashboard
+          </Button>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  // Transform settings data for forms
+  const generalSettings = settingsData ? {
+    site_name: settingsData.site_name,
+    site_description: settingsData.site_description,
+    default_language: settingsData.default_language,
+    timezone: settingsData.timezone,
+    support_email: settingsData.support_email,
+    terms_url: settingsData.terms_url,
+    privacy_url: settingsData.privacy_url,
+  } : undefined;
+
+  const storageSettings = settingsData ? {
+    storage_backend: settingsData.storage_backend,
+    s3_bucket_name: settingsData.s3_bucket_name,
+    s3_region: settingsData.s3_region,
+    s3_access_key_id: settingsData.s3_access_key_id,
+    s3_endpoint_url: settingsData.s3_endpoint_url,
+    s3_custom_domain: settingsData.s3_custom_domain,
+    gcs_bucket_name: settingsData.gcs_bucket_name,
+    gcs_project_id: settingsData.gcs_project_id,
+    azure_container_name: settingsData.azure_container_name,
+    azure_account_name: settingsData.azure_account_name,
+    max_file_size_mb: settingsData.max_file_size_mb,
+    allowed_extensions: settingsData.allowed_extensions,
+  } : undefined;
+
+  const emailSettings = settingsData ? {
+    smtp_host: settingsData.smtp_host,
+    smtp_port: settingsData.smtp_port,
+    smtp_username: settingsData.smtp_username,
+    smtp_use_tls: settingsData.smtp_use_tls,
+    smtp_use_ssl: settingsData.smtp_use_ssl,
+    default_from_email: settingsData.default_from_email,
+    default_from_name: settingsData.default_from_name,
+    email_timeout: settingsData.email_timeout,
+  } : undefined;
+
+  const SettingsSkeleton = () => (
+    <div className="space-y-4">
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-3/4" />
+      <Skeleton className="h-10 w-1/2" />
+    </div>
+  );
 
   return (
-    <PageWrapper title="Platform Settings">
+    <PageWrapper 
+      title="Platform Settings"
+      description="Configure platform-wide settings including general options, email, storage, AI engine, and integrations."
+    >
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Failed to load settings: {getApiErrorMessage(error)}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
@@ -31,7 +136,6 @@ export default function PlatformSettingsPage() {
           <TabsTrigger value="storage">Storage</TabsTrigger>
           <TabsTrigger value="ai">AI Engine</TabsTrigger>
           <TabsTrigger value="integrations">Integrations (LTI/SSO)</TabsTrigger>
-          {/* Add more tabs as needed */}
         </TabsList>
 
         <TabsContent value="general">
@@ -41,12 +145,11 @@ export default function PlatformSettingsPage() {
               <CardDescription>Basic platform configuration.</CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Placeholder for GeneralSettingsForm */}
-              <p>
-                General settings form placeholder (e.g., Site Name, Logo Upload,
-                Default Language).
-              </p>
-              {/* <GeneralSettingsForm initialData={settingsData?.general} /> */}
+              {isLoading ? (
+                <SettingsSkeleton />
+              ) : (
+                <GeneralSettingsForm initialData={generalSettings} />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -60,13 +163,11 @@ export default function PlatformSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Placeholder for EmailSettingsForm */}
-              <p>
-                Email settings form placeholder (Host, Port, User, Password,
-                From Address). Values likely come from environment variables but
-                could be overridden here if design allows.
-              </p>
-              {/* <EmailSettingsForm initialData={settingsData?.email} /> */}
+              {isLoading ? (
+                <SettingsSkeleton />
+              ) : (
+                <EmailSettingsForm initialData={emailSettings} />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -80,13 +181,11 @@ export default function PlatformSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Placeholder for StorageSettingsForm */}
-              <p>
-                Storage settings form placeholder (Bucket Name, Region, Access
-                Keys). Values likely come from environment variables but could
-                be displayed or partially configured here.
-              </p>
-              {/* <StorageSettingsForm initialData={settingsData?.storage} /> */}
+              {isLoading ? (
+                <SettingsSkeleton />
+              ) : (
+                <StorageSettingsForm initialData={storageSettings} />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -100,7 +199,6 @@ export default function PlatformSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Placeholder or Link to Model/Prompt Management Pages */}
               <p>
                 Links or embedded management for AI Model Configurations and
                 Prompt Templates.
@@ -111,27 +209,12 @@ export default function PlatformSettingsPage() {
               <Button variant="outline" asChild className="ml-2">
                 <Link href="/admin/settings/prompts">Manage Prompts</Link>
               </Button>
-              {/* <AISettingsForm /> */}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="integrations">
-          <Card>
-            <CardHeader>
-              <CardTitle>Integrations (LTI/SSO)</CardTitle>
-              <CardDescription>
-                Configure Learning Tools Interoperability and Single Sign-On.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Placeholder for LTI/SSO configuration forms */}
-              <p>
-                LTI/SSO configuration forms placeholder. These are complex and
-                often involve multiple fields per provider/platform.
-              </p>
-            </CardContent>
-          </Card>
+          <IntegrationsSettingsForm />
         </TabsContent>
       </Tabs>
     </PageWrapper>

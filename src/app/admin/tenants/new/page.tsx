@@ -101,6 +101,7 @@ export default function CreateTenantPage() {
   return (
     <PageWrapper
       title="Create Tenant"
+      description="Set up a new tenant organization with custom domains and configuration."
       actions={
         <Button variant="outline" asChild className="cursor-pointer">
           <Link href="/admin/tenants">

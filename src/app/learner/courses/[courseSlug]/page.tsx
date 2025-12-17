@@ -16,7 +16,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
-import { Terminal, CheckCircle, Circle, Lock, PlayCircle } from "lucide-react";
+import { Terminal, CheckCircle, Circle, Lock, PlayCircle, MessageSquare } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageWrapper } from "@/components/layouts/PageWrapper";
 import {
@@ -32,6 +32,7 @@ import { ContentRenderer } from "@/components/features/courses/ContentRenderer";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import Link from "next/link";
 
 type ProgressMap = Map<string, LearnerProgress>;
 
@@ -176,11 +177,24 @@ export default function CoursePlayerPage() {
 
   const overallProgress = useMemo(() => {
     if (!course || !progress || !course.modules) return 0;
-    const totalItems = course.modules.reduce((acc, m) => acc + (m.content_items?.length ?? 0), 0);
+    
+    // Only count required items for progress calculation (consistent with backend)
+    // Filter to required items only (default to required if is_required is undefined for backwards compatibility)
+    const requiredItems = course.modules.flatMap(m => 
+      (m.content_items ?? []).filter(item => item.is_required !== false)
+    );
+    const totalItems = requiredItems.length;
+    
     if (totalItems === 0) return 0;
-    const completedItems = Array.from(progressMap.values()).filter(p => p.status === 'COMPLETED').length;
+    
+    // Count completed items that are required
+    const requiredItemIds = new Set(requiredItems.map(item => item.id));
+    const completedItems = Array.from(progressMap.values()).filter(
+      p => p.status === 'COMPLETED' && requiredItemIds.has(p.content_item.id)
+    ).length;
+    
     return Math.round((completedItems / totalItems) * 100);
-  }, [course, progressMap]);
+  }, [course, progress, progressMap]);
 
   const { mutate: updateProgress } = useMutation({
     mutationFn: ({ itemId, status }: { itemId: string; status: "IN_PROGRESS" | "COMPLETED" | "NOT_STARTED"; preventAutoNav?: boolean }) =>
@@ -274,7 +288,7 @@ export default function CoursePlayerPage() {
 
   if (isLoadingCourse) {
     return (
-      <PageWrapper title="Loading Course...">
+      <PageWrapper title="Loading Course..." description="Preparing course content and progress tracking.">
         <CoursePlayerSkeleton />
       </PageWrapper>
     );
@@ -282,7 +296,7 @@ export default function CoursePlayerPage() {
 
   if (isErrorCourse) {
     return (
-      <PageWrapper title="Error">
+      <PageWrapper title="Error" description="There was a problem loading the course.">
         <Alert variant="destructive">
           <Terminal className="h-4 w-4" />
           <AlertTitle>Error Loading Course</AlertTitle>
@@ -296,7 +310,7 @@ export default function CoursePlayerPage() {
 
   if (!course) {
     return (
-      <PageWrapper title="Course Not Found">
+      <PageWrapper title="Course Not Found" description="The requested course could not be located.">
         <div className="text-center py-12">
           <p className="text-muted-foreground">The requested course could not be found.</p>
         </div>
@@ -305,7 +319,7 @@ export default function CoursePlayerPage() {
   }
 
   return (
-    <PageWrapper title={course.title}>
+    <PageWrapper title={course.title} description="Learn at your own pace with interactive lessons and progress tracking.">
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left Sidebar - Fixed width for consistency */}
         <aside className="w-full lg:w-80 xl:w-96 flex-shrink-0">
@@ -316,6 +330,16 @@ export default function CoursePlayerPage() {
                     <h3 className="font-semibold mb-2">Progress</h3>
                     <Progress value={overallProgress} className="h-2" />
                     <p className="text-sm text-muted-foreground mt-1">{overallProgress}% Complete</p>
+                </div>
+            )}
+            {isEnrolled && (
+                <div className="mb-4">
+                    <Button variant="outline" className="w-full justify-start" asChild>
+                      <Link href={`/learner/courses/${courseSlug}/discussions`}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Course Discussions
+                      </Link>
+                    </Button>
                 </div>
             )}
             <CourseOutline

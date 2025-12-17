@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner"; // Import Sonner toast
 
@@ -34,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createUser, getApiErrorMessage } from "@/lib/api"; // Use createUser API
+import { createUser, fetchTenants, getApiErrorMessage } from "@/lib/api";
 import { QUERY_KEYS, USER_ROLES } from "@/lib/constants";
 import { useAuth } from "@/components/providers/AuthProvider"; // To get current admin's tenant if needed
 
@@ -56,14 +56,22 @@ export default function InviteUserPage() {
   const queryClient = useQueryClient();
   const { user: adminUser } = useAuth(); // Get current admin user info
 
-  // TODO: Fetch Tenants if superuser needs to select one
-  // const { data: tenants } = useQuery(...)
-  // Placeholder - this needs proper implementation with tenant management
-  const tenants = [{ id: "placeholder-tenant-id", name: "My Tenant" }];
+  // Fetch tenants for superuser to select from
+  const { data: tenantsData } = useQuery({
+    queryKey: [QUERY_KEYS.TENANTS],
+    queryFn: () => fetchTenants(),
+    enabled: adminUser?.is_superuser === true,
+  });
+  const tenants = tenantsData?.results ?? [];
 
   const methods = useForm<InviteUserFormValues>({
     resolver: zodResolver(inviteUserSchema),
-    defaultValues: { role: USER_ROLES.LEARNER },
+    defaultValues: {
+      first_name: "",
+      last_name: "",
+      email: "",
+      role: USER_ROLES.LEARNER,
+    },
   });
 
   const {
@@ -74,19 +82,19 @@ export default function InviteUserPage() {
   // Use createUser mutation (backend logic determines if it's invite vs create)
   const mutation = useMutation({
     mutationFn: (data: InviteUserFormValues) => {
-      const apiData = {
-        ...data,
-        // Backend API needs tenant ID. Use tenant_id from form if provided,
-        // otherwise use a placeholder (this needs proper implementation)
-        tenant: data.tenant_id || "placeholder-tenant-id",
-        // No password sent for invite flow
-      };
-      if (!apiData.tenant) {
+      // Determine tenant: use selected tenant_id for superusers, or admin's tenant
+      const tenantId = data.tenant_id || adminUser?.tenant;
+      if (!tenantId) {
         throw new Error("Tenant could not be determined for user creation.");
       }
-      // Remove tenant_id if it exists (API expects 'tenant')
-      delete (apiData as { tenant_id?: string }).tenant_id;
-      return createUser(apiData); // Use createUser API endpoint
+      const apiData = {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        role: data.role,
+        tenant: tenantId,
+      };
+      return createUser(apiData);
     },
     onSuccess: (newUser) => {
       // Use Sonner toast
@@ -109,7 +117,10 @@ export default function InviteUserPage() {
   };
 
   return (
-    <PageWrapper title="Invite New User">
+    <PageWrapper 
+      title="Invite New User"
+      description="Send an invitation to a new user to join the platform with a specified role."
+    >
       <FormProvider {...methods}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Card className="max-w-2xl mx-auto">
@@ -216,7 +227,7 @@ export default function InviteUserPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {tenants?.map((t) => (
+                          {tenants?.filter((t) => t.id).map((t) => (
                             <SelectItem key={t.id} value={t.id!}>
                               {t.name}
                             </SelectItem>

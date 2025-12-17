@@ -1,10 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Award, Download, Calendar } from "lucide-react";
+import { Award, Download, Calendar, Loader2 } from "lucide-react";
 import { Certificate } from "@/lib/types";
 import { downloadCertificate } from "@/lib/api";
 
@@ -13,32 +13,40 @@ interface CertificateCardProps {
 }
 
 export function CertificateCard({ certificate }: CertificateCardProps) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const handleDownload = async () => {
     // Handle certificate download using the dedicated download endpoint
-    if (certificate.file_url) {
-      try {
-        // Use the API client function which handles authentication automatically
-        const blob = await downloadCertificate(certificate.id.toString());
-        
-        // Create a download link with the blob
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `certificate-${certificate.course_title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up the object URL
-        window.URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error('Error downloading certificate:', error);
-        // Fallback to opening in new tab if download fails
+    // Backend will generate PDF on-demand if it doesn't exist
+    if (certificate.status !== 'ISSUED') return;
+    
+    setIsDownloading(true);
+    try {
+      // Use the API client function which handles authentication automatically
+      const blob = await downloadCertificate(certificate.id.toString());
+      
+      // Create a download link with the blob
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `certificate-${certificate.course_title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the object URL
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading certificate:', error);
+      // Fallback to opening in new tab if download fails and file_url exists
+      if (certificate.file_url) {
         const fullUrl = certificate.file_url.startsWith('http') 
           ? certificate.file_url 
           : `http://localhost:8000${certificate.file_url}`;
         window.open(fullUrl, '_blank');
       }
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -87,12 +95,16 @@ export function CertificateCard({ certificate }: CertificateCardProps) {
       <CardFooter>
         <Button 
           onClick={handleDownload}
-          disabled={!certificate.file_url}
-          className={`w-full ${certificate.file_url ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+          disabled={certificate.status !== 'ISSUED' || isDownloading}
+          className="w-full"
           variant="outline"
         >
-          <Download className="h-4 w-4 mr-2" />
-          Download Certificate
+          {isDownloading ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-2" />
+          )}
+          {isDownloading ? 'Generating...' : 'Download Certificate'}
         </Button>
       </CardFooter>
     </Card>

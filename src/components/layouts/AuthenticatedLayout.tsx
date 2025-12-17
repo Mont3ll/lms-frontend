@@ -35,7 +35,7 @@ export function AuthenticatedLayout({
           </div>
           <div className="flex-1 overflow-y-auto">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4 py-4">
-              {user && <SidebarNav userRole={user.role} />}
+              {user && <SidebarNav userRole={user.role} isSuperuser={user.is_superuser} />}
             </nav>
           </div>
         </div>

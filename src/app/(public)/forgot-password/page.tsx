@@ -18,7 +18,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-// import { apiClient } from '@/lib/api'; // Assume API function exists
+import { requestPasswordReset, getApiErrorMessage } from "@/lib/api";
 
 // Validation Schema
 const forgotPasswordSchema = z.object({
@@ -42,22 +42,15 @@ export default function ForgotPasswordPage() {
     setError(null);
     setSuccess(null);
     try {
-      // TODO: Replace with your actual API call for password reset request
-      // await apiClient.post('/auth/password/reset/', data);
-      console.log("Password reset request submitted for:", data.email);
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
-
+      await requestPasswordReset({ email: data.email });
       setSuccess(
         "If an account exists for this email, a password reset link has been sent.",
       );
-      form.reset(); // Clear form on success
+      form.reset();
     } catch (err: unknown) {
-      console.error("Password reset request failed:", err);
-      const axiosError = err as { response?: { data?: { detail?: string } } };
-      setError(
-        axiosError.response?.data?.detail ||
-          "Failed to send password reset email. Please try again.",
-      );
+      // The backend always returns success to prevent email enumeration,
+      // but we handle errors just in case (network issues, etc.)
+      setError(getApiErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

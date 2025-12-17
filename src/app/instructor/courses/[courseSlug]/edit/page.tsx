@@ -9,6 +9,7 @@ import {
 } from "@/app/instructor/courses/new/_components/CourseFormContext";
 import { CourseDetailsStep } from "@/app/instructor/courses/new/_components/CourseDetailsStep";
 import { CoursePublishStep } from "@/app/instructor/courses/new/_components/CoursePublishStep";
+import { PrerequisiteManager } from "@/components/features/courses/PrerequisiteManager";
 import { PageWrapper } from "@/components/layouts/PageWrapper";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -153,7 +154,7 @@ function EditCourseForm({ courseSlug }: { courseSlug: string }) {
 
   if (isLoading) {
     return (
-      <PageWrapper title="Edit Course">
+      <PageWrapper title="Edit Course" description="Update course details, pricing, and publication status.">
         <div className="space-y-6">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
@@ -164,7 +165,7 @@ function EditCourseForm({ courseSlug }: { courseSlug: string }) {
   }
   if (isError) {
     return (
-      <PageWrapper title="Edit Course">
+      <PageWrapper title="Edit Course" description="Update course details, pricing, and publication status.">
         <Alert>
           <Terminal className="h-4 w-4" />
           <AlertTitle>Error loading course</AlertTitle>
@@ -215,6 +216,12 @@ function EditCourseForm({ courseSlug }: { courseSlug: string }) {
       <div className="space-y-6">
         <CourseDetailsStep />
         <CoursePublishStep />
+        {courseData && (
+          <PrerequisiteManager
+            courseId={courseData.id}
+            courseSlug={courseSlug}
+          />
+        )}
       </div>
     </div>
   );

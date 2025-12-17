@@ -144,7 +144,7 @@ export default function EditTenantPage() {
 
   if (isLoading) {
     return (
-      <PageWrapper title="Edit Tenant">
+      <PageWrapper title="Edit Tenant" description="Loading tenant configuration.">
         <div className="max-w-2xl mx-auto space-y-6">
           <Skeleton className="h-64 w-full" />
           <Skeleton className="h-32 w-full" />
@@ -156,7 +156,7 @@ export default function EditTenantPage() {
 
   if (isError || !tenant) {
     return (
-      <PageWrapper title="Edit Tenant">
+      <PageWrapper title="Edit Tenant" description="There was a problem loading tenant details.">
         <div className="text-center py-8">
           <p className="text-destructive">Failed to load tenant details</p>
           <Button asChild className="mt-4">
@@ -170,6 +170,7 @@ export default function EditTenantPage() {
   return (
     <PageWrapper
       title={`Edit Tenant: ${tenant.name}`}
+      description="Update tenant settings, domains, and configuration options."
       actions={
         <Button variant="outline" asChild>
           <Link href="/admin/tenants">

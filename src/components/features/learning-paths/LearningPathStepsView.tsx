@@ -4,27 +4,7 @@ import { CheckCircle, Circle, PlayCircle, FileText, BookOpen, Layers } from "luc
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-interface LearningPathProgress {
-  completed_step_ids?: string[];
-}
-
-interface ContentObject {
-  id?: string;
-  slug?: string;
-  title?: string;
-}
-
-interface LearningPathStep {
-  id: string;
-  order?: number;
-  content_type_name?: string;
-  content_object?: ContentObject;
-  is_required?: boolean;
-  learning_path?: {
-    slug?: string;
-  };
-}
+import { LearningPathProgress, LearningPathStep } from "@/lib/types";
 
 interface LearningPathStepsViewProps {
   steps: LearningPathStep[];
@@ -71,15 +51,11 @@ export const LearningPathStepsView: React.FC<LearningPathStepsViewProps> = ({
 
   const getStepLink = (step: LearningPathStep): string => {
     // Determine the link based on content type and object slug/id
-    const obj = step.content_object;
-    if (step.content_type_name === "course" && obj?.slug) {
+    const obj = step.content_object?.data;
+    if (step.content_type_name === "course" && obj && 'slug' in obj && obj.slug) {
       return `/courses/${obj.slug}`;
     }
-    if (
-      step.content_type_name === "module" &&
-      obj?.id &&
-      step.learning_path?.slug
-    ) {
+    if (step.content_type_name === "module" && obj?.id) {
       // Need course slug for module link? Adjust based on routing
       // Requires knowing the course the module belongs to if linking directly
       // Linking to the first content item of the module might be better
@@ -116,7 +92,7 @@ export const LearningPathStepsView: React.FC<LearningPathStepsViewProps> = ({
                     </p>
                     <h4 className="font-semibold flex items-center">
                       {getContentTypeIcon(step.content_type_name ?? "")}
-                      {step.content_object?.title || "Untitled Step"}
+                      {step.content_object?.data?.title || "Untitled Step"}
                     </h4>
                     {!step.is_required && (
                       <Badge variant="outline" className="text-xs mt-1">

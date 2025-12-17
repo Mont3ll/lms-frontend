@@ -7,6 +7,7 @@ export interface RecentSystemEvent {
   id: string; // Event ID
   type: string; // e.g., "TENANT_CREATED", "USER_REGISTERED"
   description: string; // e.g., "Tenant 'New Corp' was created"
+  user_email?: string; // Email of the user who triggered the event
   timestamp: string; // ISO datetime string
 }
 

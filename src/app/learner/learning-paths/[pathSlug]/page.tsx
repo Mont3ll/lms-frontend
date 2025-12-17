@@ -81,7 +81,7 @@ const LearningPathStepItem = ({
               <BookOpen className="h-4 w-4" />
               {step.content_type_name === 'course' ? 'Course' : 'Module'}
             </span>
-            {'estimated_duration' in contentObject && contentObject.estimated_duration && (
+            {contentObject && 'estimated_duration' in contentObject && contentObject.estimated_duration && (
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
                 {contentObject.estimated_duration}h
@@ -97,7 +97,7 @@ const LearningPathStepItem = ({
                   variant="outline"
                   className="cursor-pointer"
                 >
-                  <Link href={`/learner/courses/${'slug' in contentObject ? contentObject.slug : ''}`}>
+                  <Link href={`/learner/courses/${contentObject && 'slug' in contentObject ? contentObject.slug : ''}`}>
                     Review
                   </Link>
                 </Button>
@@ -118,7 +118,7 @@ const LearningPathStepItem = ({
                   variant="default"
                   className="cursor-pointer"
                 >
-                  <Link href={`/learner/courses/${'slug' in contentObject ? contentObject.slug : ''}`}>
+                  <Link href={`/learner/courses/${contentObject && 'slug' in contentObject ? contentObject.slug : ''}`}>
                     Start
                   </Link>
                 </Button>
@@ -163,7 +163,7 @@ export default function LearningPathDetailPage() {
     isLoading: isLoadingProgress,
   } = useQuery({
     queryKey: ['learningPathProgress', pathSlug],
-    queryFn: () => fetchLearningPathProgress({ learning_path__slug: pathSlug }),
+    queryFn: () => fetchLearningPathProgress({ learning_path: pathSlug }),
     enabled: !!pathSlug,
   });
 
@@ -240,7 +240,7 @@ export default function LearningPathDetailPage() {
 
   if (isLoading) {
     return (
-      <PageWrapper title="Loading...">
+      <PageWrapper title="Loading..." description="Fetching learning path details and progress.">
         <div className="space-y-6">
           <div className="space-y-2">
             <Skeleton className="h-8 w-64" />
@@ -259,7 +259,7 @@ export default function LearningPathDetailPage() {
 
   if (pathError || !learningPath) {
     return (
-      <PageWrapper title="Learning Path Not Found">
+      <PageWrapper title="Learning Path Not Found" description="The requested learning path could not be located.">
         <Alert>
           <Terminal className="h-4 w-4" />
           <AlertTitle>Error Loading Learning Path</AlertTitle>
@@ -272,7 +272,7 @@ export default function LearningPathDetailPage() {
   }
 
   return (
-    <PageWrapper title={learningPath.title}>
+    <PageWrapper title={learningPath.title} description="Follow the structured steps to complete this learning path.">
       <div className="space-y-6">
         {/* Progress Overview */}
         <Card>

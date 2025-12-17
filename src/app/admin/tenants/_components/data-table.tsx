@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -30,15 +30,31 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Filter, Search, Settings2 } from "lucide-react";
-import { fetchTenants } from "@/lib/api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Filter, Loader2, Search, Settings2 } from "lucide-react";
+import { toast } from "sonner";
+import { deleteTenant, fetchTenants, getApiErrorMessage } from "@/lib/api";
 import { Tenant, PaginatedResponse } from "@/lib/types";
+import { createColumns } from "./columns";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 interface DataTableProps {
-  columns: ColumnDef<Tenant>[];
+  columns?: ColumnDef<Tenant>[];
 }
 
-export function TenantsDataTable({ columns }: DataTableProps) {
+export function TenantsDataTable({ columns: externalColumns }: DataTableProps) {
+  const { user } = useAuth();
+  const isSuperuser = user?.is_superuser === true;
+  
   const [data, setData] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +64,12 @@ export function TenantsDataTable({ columns }: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({});
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,34 +113,77 @@ export function TenantsDataTable({ columns }: DataTableProps) {
     }
   };
 
+  // Debounce search term to avoid API calls on every keystroke
   useEffect(() => {
-    loadTenants(1, searchTerm, statusFilter);
-  }, [searchTerm, statusFilter]);
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load tenants when debounced search term or status filter changes
+  useEffect(() => {
+    loadTenants(1, debouncedSearchTerm, statusFilter);
+  }, [debouncedSearchTerm, statusFilter]);
 
   const handleSearch = () => {
     setCurrentPage(1);
-    loadTenants(1, searchTerm, statusFilter);
+    setDebouncedSearchTerm(searchTerm); // Trigger immediate search
   };
 
   const handleStatusFilter = (status: string) => {
     setStatusFilter(status);
     setCurrentPage(1);
-    loadTenants(1, searchTerm, status);
   };
 
   const handlePreviousPage = () => {
     if (currentPage > 1) {
       const newPage = currentPage - 1;
-      loadTenants(newPage, searchTerm, statusFilter);
+      loadTenants(newPage, debouncedSearchTerm, statusFilter);
     }
   };
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
       const newPage = currentPage + 1;
-      loadTenants(newPage, searchTerm, statusFilter);
+      loadTenants(newPage, debouncedSearchTerm, statusFilter);
     }
   };
+
+  // Delete handlers
+  const handleDeleteClick = (tenant: Tenant) => {
+    setTenantToDelete(tenant);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!tenantToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteTenant(tenantToDelete.id);
+      toast.success("Tenant Deleted", {
+        description: `Tenant "${tenantToDelete.name}" has been deleted.`,
+      });
+      setDeleteDialogOpen(false);
+      setTenantToDelete(null);
+      // Refresh the list
+      loadTenants(currentPage, searchTerm, statusFilter);
+    } catch (error) {
+      toast.error("Delete Failed", {
+        description: getApiErrorMessage(error),
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Create columns with delete handler and superuser flag
+  const columns = useMemo(
+    () => externalColumns ?? createColumns({ onDelete: handleDeleteClick, isSuperuser }),
+    [externalColumns, isSuperuser]
+  );
 
   const table = useReactTable({
     data: data || [], // Ensure data is never undefined
@@ -142,126 +207,82 @@ export function TenantsDataTable({ columns }: DataTableProps) {
     enableMultiRowSelection: true,
   });
 
-  if (loading) {
-    return (
-      <div className="w-full">
-        <div className="flex items-center justify-between py-4">
-          <div className="flex items-center space-x-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tenants..."
-                disabled
-                className="pl-8 max-w-sm"
-              />
-            </div>
-            <Button disabled variant="outline" size="sm">
-              Search
-            </Button>
-          </div>
-        </div>
-        
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Domains</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created On</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <div className="h-4 bg-muted rounded animate-pulse" />
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-muted rounded animate-pulse" />
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-muted rounded animate-pulse" />
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-muted rounded animate-pulse" />
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-muted rounded animate-pulse" />
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-muted rounded animate-pulse" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        
-        <div className="flex items-center justify-center py-4">
-          <div className="text-muted-foreground">Loading tenants...</div>
-        </div>
-      </div>
-    );
-  }
+  // Render table body content based on state
+  const renderTableBody = () => {
+    if (loading) {
+      return Array.from({ length: 5 }).map((_, index) => (
+        <TableRow key={index}>
+          <TableCell>
+            <div className="h-4 bg-muted rounded animate-pulse" />
+          </TableCell>
+          <TableCell>
+            <div className="h-4 bg-muted rounded animate-pulse" />
+          </TableCell>
+          <TableCell>
+            <div className="h-4 bg-muted rounded animate-pulse" />
+          </TableCell>
+          <TableCell>
+            <div className="h-4 bg-muted rounded animate-pulse" />
+          </TableCell>
+          <TableCell>
+            <div className="h-4 bg-muted rounded animate-pulse" />
+          </TableCell>
+          <TableCell>
+            <div className="h-4 bg-muted rounded animate-pulse" />
+          </TableCell>
+        </TableRow>
+      ));
+    }
 
-  if (error) {
-    return (
-      <div className="w-full">
-        <div className="flex items-center justify-between py-4">
-          <div className="flex items-center space-x-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tenants..."
-                value={searchTerm || ""} // Ensure value is always defined
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="pl-8 max-w-sm"
-              />
+    if (error) {
+      return (
+        <TableRow>
+          <TableCell colSpan={columns.length} className="h-24 text-center">
+            <div className="text-destructive">
+              Error loading tenants: {error}
             </div>
-            <Button onClick={handleSearch} variant="outline" size="sm">
-              Search
+            <Button 
+              onClick={() => loadTenants(1, debouncedSearchTerm, statusFilter)}
+              variant="outline"
+              size="sm"
+              className="mt-2"
+            >
+              Retry
             </Button>
-          </div>
-        </div>
-        
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Domains</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created On</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  <div className="text-destructive">
-                    Error loading tenants: {error}
-                  </div>
-                  <Button 
-                    onClick={() => loadTenants(1, searchTerm, statusFilter)}
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                  >
-                    Retry
-                  </Button>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    if (table.getRowModel()?.rows?.length) {
+      return table.getRowModel().rows.map((row) => (
+        <TableRow
+          key={row.id}
+          data-state={row.getIsSelected() && "selected"}
+        >
+          {row.getVisibleCells().map((cell) => (
+            <TableCell key={cell.id}>
+              {flexRender(
+                cell.column.columnDef.cell,
+                cell.getContext()
+              )}
+            </TableCell>
+          ))}
+        </TableRow>
+      ));
+    }
+
+    return (
+      <TableRow>
+        <TableCell
+          colSpan={columns.length}
+          className="h-24 text-center"
+        >
+          No tenants found.
+        </TableCell>
+      </TableRow>
     );
-  }
+  };
 
   return (
     <div className="w-full">
@@ -271,15 +292,12 @@ export function TenantsDataTable({ columns }: DataTableProps) {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search tenants..."
-              value={searchTerm || ""} // Ensure value is always defined
+              value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               className="pl-8 max-w-sm"
             />
           </div>
-          <Button onClick={handleSearch} variant="outline" size="sm">
-            Search
-          </Button>
         </div>
         
         <div className="flex items-center space-x-2">
@@ -361,46 +379,25 @@ export function TenantsDataTable({ columns }: DataTableProps) {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel()?.rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No tenants found.
-                </TableCell>
-              </TableRow>
-            )}
+            {renderTableBody()}
           </TableBody>
         </Table>
       </div>
       
       <div className="flex items-center justify-between space-x-2 py-4">
         <div className="text-sm text-muted-foreground">
-          Showing {data.length} of {totalCount} tenant(s)
+          {loading ? (
+            "Loading..."
+          ) : (
+            `Showing ${data.length} of ${totalCount} tenant(s)`
+          )}
         </div>
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
             size="sm"
             onClick={handlePreviousPage}
-            disabled={currentPage <= 1}
+            disabled={loading || currentPage <= 1}
           >
             Previous
           </Button>
@@ -413,12 +410,36 @@ export function TenantsDataTable({ columns }: DataTableProps) {
             variant="outline"
             size="sm"
             onClick={handleNextPage}
-            disabled={currentPage >= totalPages}
+            disabled={loading || currentPage >= totalPages}
           >
             Next
           </Button>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Tenant</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the tenant &quot;{tenantToDelete?.name}&quot;? 
+              This action cannot be undone and will remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

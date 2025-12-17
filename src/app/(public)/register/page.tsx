@@ -64,14 +64,14 @@ export default function RegisterPage() {
     setSuccess(null);
 
     // Extract data for API call
+    // Note: Tenant context is automatically included via X-Tenant-Slug header
+    // in the apiClient interceptor based on subdomain detection
     const apiData = {
       first_name: data.firstName,
       last_name: data.lastName,
       email: data.email,
       password: data.password,
       password2: data.confirmPassword,
-      // TODO: Determine tenant ID based on subdomain or another mechanism
-      // tenant: 'your-tenant-detection-logic'
     };
 
     try {

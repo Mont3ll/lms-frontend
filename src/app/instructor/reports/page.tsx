@@ -4,13 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { PageWrapper } from "@/components/layouts/PageWrapper";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportViewer } from "@/app/admin/analytics/_components/ReportViewer";
-import { fetchInstructorReports } from '@/lib/api';
+import { fetchInstructorReports, InstructorReport } from '@/lib/api';
 import { QUERY_KEYS } from '@/lib/constants';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Report } from "@/lib/types/analytics";
 
 export default function InstructorReportsPage() {
   const [selectedReportSlug, setSelectedReportSlug] = useState<string>("");
@@ -26,10 +25,13 @@ export default function InstructorReportsPage() {
 
   // Use all available reports since we don't have access_level field in the Report model
   const instructorReports = reports || [];
+  
+  // Find the selected report by slug (type field contains the slug)
+  const selectedReport = instructorReports.find(r => r.type === selectedReportSlug);
 
   if (isLoading) {
     return (
-      <PageWrapper title="Course Reports">
+      <PageWrapper title="Course Reports" description="Generate detailed reports on student progress, course completion, and learning outcomes.">
         <div className="space-y-4">
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-64 w-full" />
@@ -40,7 +42,7 @@ export default function InstructorReportsPage() {
 
   if (isError) {
     return (
-      <PageWrapper title="Course Reports">
+      <PageWrapper title="Course Reports" description="Generate detailed reports on student progress, course completion, and learning outcomes.">
         <Alert>
           <Terminal className="h-4 w-4" />
           <AlertTitle>Error Loading Reports</AlertTitle>
@@ -53,7 +55,7 @@ export default function InstructorReportsPage() {
   }
 
   return (
-    <PageWrapper title="Course Reports">
+    <PageWrapper title="Course Reports" description="Generate detailed reports on student progress, course completion, and learning outcomes.">
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -68,9 +70,9 @@ export default function InstructorReportsPage() {
                 <SelectValue placeholder="Select a report" />
               </SelectTrigger>
               <SelectContent>
-                {instructorReports.map((report: Report) => (
-                  <SelectItem key={report.id} value={report.slug}>
-                    {report.name}
+                {instructorReports.map((report: InstructorReport) => (
+                  <SelectItem key={report.id} value={report.type}>
+                    {report.title}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -82,11 +84,8 @@ export default function InstructorReportsPage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                {instructorReports.find(r => r.slug === selectedReportSlug)?.name}
+                {selectedReport?.title}
               </CardTitle>
-              <CardDescription>
-                {instructorReports.find(r => r.slug === selectedReportSlug)?.description}
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <ReportViewer 

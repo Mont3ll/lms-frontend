@@ -15,9 +15,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { fetchInstructorCourses, createAssessment } from "@/lib/api";
+import { fetchInstructorCourses, createAssessment, AssessmentData } from "@/lib/api";
 import { QUERY_KEYS } from "@/lib/constants";
-import { Assessment } from "@/lib/types/assessment";
 
 interface AssessmentFormData {
   course: string;
@@ -60,7 +59,7 @@ export default function NewAssessmentPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: Partial<Assessment>) => createAssessment(data),
+    mutationFn: (data: AssessmentData) => createAssessment(data),
     onSuccess: (assessment) => {
       toast.success("Assessment created successfully");
       router.push(`/instructor/assessments/${assessment.id}/edit`);
@@ -95,6 +94,7 @@ export default function NewAssessmentPage() {
   return (
     <PageWrapper
       title="Create New Assessment"
+      description="Set up a new quiz, exam, or assignment with custom settings and grading options."
       actions={
         <Button asChild variant="outline">
           <Link href="/instructor/assessments">

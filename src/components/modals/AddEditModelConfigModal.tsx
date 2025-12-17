@@ -37,37 +37,17 @@ import {
 import { Loader2 } from "lucide-react";
 import { createAIModelConfig, updateAIModelConfig, getApiErrorMessage } from "@/lib/api";
 import { QUERY_KEYS } from "@/lib/constants";
-
-// Local interface for the model config that this modal can edit
-interface EditableModelConfig {
-  id: string;
-  name: string;
-  provider: "openai" | "anthropic" | "huggingface" | "ollama" | "custom";
-  model_type?: "text_generation" | "text_embedding" | "image_generation" | "code_generation";
-  model_id: string;
-  api_key?: string;
-  api_base_url?: string;
-  max_tokens?: number;
-  temperature?: number;
-  is_active: boolean;
-  configuration?: Record<string, unknown>;
-}
+import { ModelConfig } from "@/lib/types";
 
 const modelConfigSchema = z.object({
   name: z.string().min(1, "Model name is required").max(100, "Name is too long"),
-  provider: z.enum(["openai", "anthropic", "huggingface", "ollama", "custom"], {
+  provider: z.enum(["OPENAI", "ANTHROPIC", "HUGGINGFACE", "CUSTOM"] as const, {
     required_error: "Please select a provider",
   }),
-  model_type: z.enum(["text_generation", "text_embedding", "image_generation", "code_generation"], {
-    required_error: "Please select a model type",
-  }),
   model_id: z.string().min(1, "Model ID is required"),
-  api_key: z.string().optional(),
-  api_base_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  max_tokens: z.number().min(1, "Must be at least 1").max(100000, "Too large").optional(),
-  temperature: z.number().min(0, "Must be 0 or higher").max(2, "Must be 2 or lower").optional(),
+  base_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   is_active: z.boolean(),
-  configuration: z.string().optional(),
+  default_params: z.string().optional(),
 });
 
 type ModelConfigFormValues = z.infer<typeof modelConfigSchema>;
@@ -75,7 +55,7 @@ type ModelConfigFormValues = z.infer<typeof modelConfigSchema>;
 interface AddEditModelConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
-  modelConfig?: EditableModelConfig | null; // For editing existing config
+  modelConfig?: ModelConfig | null; // For editing existing config
 }
 
 export function AddEditModelConfigModal({
@@ -90,15 +70,11 @@ export function AddEditModelConfigModal({
     resolver: zodResolver(modelConfigSchema),
     defaultValues: {
       name: modelConfig?.name || "",
-      provider: modelConfig?.provider || "openai",
-      model_type: modelConfig?.model_type || "text_generation",
+      provider: modelConfig?.provider || "OPENAI",
       model_id: modelConfig?.model_id || "",
-      api_key: modelConfig?.api_key || "",
-      api_base_url: modelConfig?.api_base_url || "",
-      max_tokens: modelConfig?.max_tokens || 4096,
-      temperature: modelConfig?.temperature || 0.7,
+      base_url: modelConfig?.base_url || "",
       is_active: modelConfig?.is_active ?? true,
-      configuration: modelConfig?.configuration ? JSON.stringify(modelConfig.configuration, null, 2) : "{}",
+      default_params: modelConfig?.default_params ? JSON.stringify(modelConfig.default_params, null, 2) : "{}",
     },
   });
 
@@ -106,7 +82,7 @@ export function AddEditModelConfigModal({
     mutationFn: (data: ModelConfigFormValues) => {
       const payload = {
         ...data,
-        configuration: data.configuration ? JSON.parse(data.configuration) : {},
+        default_params: data.default_params ? JSON.parse(data.default_params) : {},
       };
       
       if (isEditing) {
@@ -188,56 +164,12 @@ export function AddEditModelConfigModal({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="openai">OpenAI</SelectItem>
-                        <SelectItem value="anthropic">Anthropic</SelectItem>
-                        <SelectItem value="huggingface">Hugging Face</SelectItem>
-                        <SelectItem value="ollama">Ollama</SelectItem>
-                        <SelectItem value="custom">Custom</SelectItem>
+                        <SelectItem value="OPENAI">OpenAI</SelectItem>
+                        <SelectItem value="ANTHROPIC">Anthropic</SelectItem>
+                        <SelectItem value="HUGGINGFACE">Hugging Face</SelectItem>
+                        <SelectItem value="CUSTOM">Custom / Self-Hosted</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="model_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Model Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select model type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="text_generation">Text Generation</SelectItem>
-                        <SelectItem value="text_embedding">Text Embedding</SelectItem>
-                        <SelectItem value="image_generation">Image Generation</SelectItem>
-                        <SelectItem value="code_generation">Code Generation</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="model_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Model ID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="gpt-4-turbo-preview" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      The actual model identifier used by the API
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -246,15 +178,15 @@ export function AddEditModelConfigModal({
 
             <FormField
               control={form.control}
-              name="api_key"
+              name="model_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>API Key</FormLabel>
+                  <FormLabel>Model ID</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="sk-..." {...field} />
+                    <Input placeholder="gpt-4-turbo-preview" {...field} />
                   </FormControl>
                   <FormDescription>
-                    API key for accessing the model (leave empty to use global key)
+                    The actual model identifier used by the API
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -263,10 +195,10 @@ export function AddEditModelConfigModal({
 
             <FormField
               control={form.control}
-              name="api_base_url"
+              name="base_url"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>API Base URL</FormLabel>
+                  <FormLabel>Base URL</FormLabel>
                   <FormControl>
                     <Input placeholder="https://api.openai.com/v1" {...field} />
                   </FormControl>
@@ -278,68 +210,21 @@ export function AddEditModelConfigModal({
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="max_tokens"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Max Tokens</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Maximum number of tokens to generate
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="temperature"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Temperature</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="2"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Controls randomness (0 = deterministic, 2 = very random)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
             <FormField
               control={form.control}
-              name="configuration"
+              name="default_params"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Additional Configuration (JSON)</FormLabel>
+                  <FormLabel>Default Parameters (JSON)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder='{"top_p": 1, "frequency_penalty": 0}'
+                      placeholder='{"temperature": 0.7, "max_tokens": 4096}'
                       {...field}
                       rows={4}
                     />
                   </FormControl>
                   <FormDescription>
-                    Additional model-specific configuration as JSON
+                    Default model parameters as JSON
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

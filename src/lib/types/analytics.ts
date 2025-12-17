@@ -59,6 +59,6 @@ export interface ReportData {
   report_name: string;
   generated_at: string;
   filters_applied: Record<string, unknown>;
-  data: unknown[]; // Array of data points, structure varies by report
+  data: unknown[] | Record<string, unknown>; // Data can be array of data points or a dict, structure varies by report
   summary?: Record<string, unknown> | null; // Optional summary stats
 }

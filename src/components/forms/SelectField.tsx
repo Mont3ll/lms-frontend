@@ -59,8 +59,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
         render={({ field }) => (
           <Select
             onValueChange={field.onChange}
-            defaultValue={field.value}
-            value={field.value}
+            value={field.value ?? ""}
             disabled={disabled}
             name={name}
           >

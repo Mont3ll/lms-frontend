@@ -4,15 +4,27 @@ import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { fetchInstructorCourses } from "@/lib/api";
 import { QUERY_KEYS } from "@/lib/constants";
-import { DataTable } from "@/components/features/common/DataTable";
+import { DataTable, FilterConfig } from "@/components/features/common/DataTable";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Users } from "lucide-react";
 import { PageWrapper } from "@/components/layouts/PageWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { Course } from "@/lib/types";
+
+const courseFilters: FilterConfig[] = [
+  {
+    columnId: "status",
+    label: "Status",
+    options: [
+      { label: "Draft", value: "DRAFT" },
+      { label: "Published", value: "PUBLISHED" },
+      { label: "Archived", value: "ARCHIVED" },
+    ],
+  },
+];
 
 // Define columns for instructor courses
 const instructorCourseColumns: ColumnDef<Course>[] = [
@@ -50,6 +62,12 @@ const instructorCourseColumns: ColumnDef<Course>[] = [
               Modules
             </Link>
           </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/instructor/courses/${course.slug}/enrollments`}>
+              <Users className="h-4 w-4 mr-1" />
+              Students
+            </Link>
+          </Button>
         </div>
       );
     },
@@ -70,7 +88,7 @@ export default function ManageCoursesPage() {
 
   if (isLoading) {
     return (
-      <PageWrapper title="Manage Courses">
+      <PageWrapper title="Manage Courses" description="Create, edit, and organize your courses. Track enrollments and manage course content.">
         <div className="flex items-center justify-between mb-6">
           <Skeleton className="h-8 w-40" />
           <Skeleton className="h-10 w-32" />
@@ -86,7 +104,7 @@ export default function ManageCoursesPage() {
 
   if (isError) {
     return (
-      <PageWrapper title="Manage Courses">
+      <PageWrapper title="Manage Courses" description="Create, edit, and organize your courses. Track enrollments and manage course content.">
         <Alert>
           <Terminal className="h-4 w-4" />
           <AlertTitle>Error Loading Courses</AlertTitle>
@@ -101,6 +119,7 @@ export default function ManageCoursesPage() {
   return (
     <PageWrapper
       title="Manage Courses"
+      description="Create, edit, and organize your courses. Track enrollments and manage course content."
       actions={
         <Button asChild>
           <Link href="/instructor/courses/new">
@@ -110,7 +129,13 @@ export default function ManageCoursesPage() {
         </Button>
       }
     >
-      <DataTable columns={instructorCourseColumns} data={tableData} />
+      <DataTable 
+        columns={instructorCourseColumns} 
+        data={tableData} 
+        filterColumnId="title"
+        filterInputPlaceholder="Search by course title..."
+        filters={courseFilters}
+      />
     </PageWrapper>
   );
 }
